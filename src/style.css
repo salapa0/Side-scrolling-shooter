@@ -31,3 +31,144 @@ body {
 #fatal[hidden] {
   display: none;
 }
+
+/* Overlay screens (start, pause, results), drawn over the live canvas. Palette matches config colors. */
+:root {
+  --ui-ink: #e8eaff;
+  --ui-muted: #9aa0d0;
+  --ui-panel: rgba(11, 13, 26, 0.9);
+  --ui-scrim: rgba(11, 13, 26, 0.45);
+  --ui-accent: #5ef2ff;
+  --ui-focus: #fff36b;
+  --ui-win: #fff36b;
+  --ui-fail: #ff4d6d;
+  --ui-error: #ff7a8f;
+}
+
+.screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: var(--ui-scrim);
+  color: var(--ui-ink);
+  font-family: ui-monospace, Consolas, monospace;
+  /* Scales with the window so text stays readable from a step back at the booth. */
+  font-size: clamp(16px, min(2.6vh, 1.9vw), 30px);
+  line-height: 1.4;
+}
+
+/* display: flex above would otherwise override the hidden attribute. */
+.screen[hidden] {
+  display: none;
+}
+
+.panel {
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 1.5em 2em;
+  background: var(--ui-panel);
+  border: 2px solid var(--ui-accent);
+  text-align: center;
+}
+
+.screen h1,
+.screen h2 {
+  margin: 0 0 0.75em;
+  font-size: 2em;
+  letter-spacing: 0.08em;
+  color: var(--ui-accent);
+}
+
+.screen p {
+  margin: 0 0 0.5em;
+}
+
+.hint {
+  color: var(--ui-muted);
+}
+
+#start-form {
+  display: grid;
+  grid-template-columns: max-content 7ch 20ch;
+  gap: 0.75em 1em;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 1.5em;
+  text-align: left;
+}
+
+.field {
+  display: contents;
+}
+
+.screen input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.2em 0.4em;
+  font: inherit;
+  text-align: right;
+  color: var(--ui-ink);
+  background: #000;
+  border: 2px solid var(--ui-muted);
+}
+
+.screen input[aria-invalid='true'] {
+  border-color: var(--ui-error);
+}
+
+.error {
+  color: var(--ui-error);
+}
+
+.screen button {
+  padding: 0.4em 1.6em;
+  font: inherit;
+  font-weight: bold;
+  color: #0b0d1a;
+  background: var(--ui-accent);
+  border: 0;
+  cursor: pointer;
+}
+
+#start-form button {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin-top: 0.5em;
+}
+
+#play-again {
+  margin-top: 1em;
+}
+
+/* Always ringed, not just :focus-visible: the ring is what tells players Enter will work. */
+.screen :focus {
+  outline: 3px solid var(--ui-focus);
+  outline-offset: 3px;
+}
+
+#pause h2 {
+  font-size: 3em;
+}
+
+#results[data-outcome='win'] #results-title {
+  color: var(--ui-win);
+}
+
+#results[data-outcome='fail'] #results-title {
+  color: var(--ui-fail);
+}
+
+#results-reason {
+  font-size: 1.25em;
+}
+
+/* Narrow windows: stack each label, field and message. */
+@media (max-width: 36rem) {
+  #start-form {
+    grid-template-columns: minmax(0, 20ch);
+    gap: 0.25em;
+  }
+}

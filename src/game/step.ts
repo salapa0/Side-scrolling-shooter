@@ -3,6 +3,7 @@ import { resolveCombat } from './combat';
 import { updateBoss, updateDrones } from './enemies';
 import { updatePlayer } from './player';
 import { updateBullets } from './projectiles';
+import { updateRound } from './round';
 import type { World } from './world';
 
 export function stepWorld(w: World, input: InputState, dt: number): void {
@@ -18,6 +19,6 @@ export function stepWorld(w: World, input: InputState, dt: number): void {
   updateBullets(w.playerBullets, dt, w.cfg.view);
   updateBullets(w.enemyBullets, dt, w.cfg.view);
   resolveCombat(w);
-  // Slot 8: updateRound (Task 8).
+  updateRound(w, dt);
   // Slot 9: updateEffects (Task 9).
 }

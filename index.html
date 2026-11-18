@@ -9,6 +9,49 @@
   </head>
   <body>
     <canvas id="game"></canvas>
+
+    <section id="start" class="screen" aria-labelledby="start-title" hidden>
+      <div class="panel">
+        <h1 id="start-title">SIDE-SCROLLING SHOOTER</h1>
+        <form id="start-form" autocomplete="off">
+          <div class="field">
+            <label for="flat-attack">Flat Attack</label>
+            <input id="flat-attack" type="text" inputmode="decimal" spellcheck="false" aria-describedby="flat-attack-error" />
+            <span id="flat-attack-error" class="error" aria-live="polite"></span>
+          </div>
+          <div class="field">
+            <label for="cd-reduction">CD Reduction (%)</label>
+            <input id="cd-reduction" type="text" inputmode="decimal" spellcheck="false" aria-describedby="cd-reduction-error" />
+            <span id="cd-reduction-error" class="error" aria-live="polite"></span>
+          </div>
+          <div class="field">
+            <label for="play-time">Play Time (s)</label>
+            <input id="play-time" type="text" inputmode="decimal" spellcheck="false" aria-describedby="play-time-error" />
+            <span id="play-time-error" class="error" aria-live="polite"></span>
+          </div>
+          <button type="submit">Start</button>
+        </form>
+        <p class="hint">WASD / Arrows: move · E: special beam · Firing is automatic · Esc: pause</p>
+      </div>
+    </section>
+
+    <section id="pause" class="screen" aria-labelledby="pause-title" hidden>
+      <div class="panel">
+        <h2 id="pause-title">PAUSED</h2>
+        <p class="hint">Press Esc to resume</p>
+      </div>
+    </section>
+
+    <section id="results" class="screen" aria-labelledby="results-title" hidden>
+      <div class="panel">
+        <h2 id="results-title"></h2>
+        <p id="results-reason"></p>
+        <p id="results-kills"></p>
+        <p id="results-stats" class="hint"></p>
+        <button id="play-again" type="button">Play Again</button>
+      </div>
+    </section>
+
     <div id="fatal" role="alert" hidden></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

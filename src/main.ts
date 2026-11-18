@@ -5,13 +5,20 @@ import { advance, startLoop } from './engine/loop';
 import { Renderer, WebGL2UnavailableError } from './engine/renderer';
 import { createRng } from './engine/rng';
 import { drawWorld } from './game/draw';
+import { toResult } from './game/round';
 import { stepWorld } from './game/step';
-import { createWorld } from './game/world';
-import { defaultStatInput, deriveStats } from './stats';
+import { createWorld, type World } from './game/world';
+import { defaultStatInput, deriveStats, type StatInput } from './stats';
+import { createScreens } from './ui/screens';
 
 const WEBGL2_MESSAGE =
   'This game needs WebGL2. Open it in an up-to-date Chrome or Edge with hardware acceleration turned on.';
 const CONTEXT_LOST_MESSAGE = 'The graphics driver reset. Press F5 to reload.';
+
+type AppState = 'start' | 'playing' | 'paused' | 'results';
+
+const newWorld = (input: StatInput): World =>
+  createWorld(CONFIG, deriveStats(input, CONFIG.stats), createRng(Date.now() >>> 0));
 
 function showFatal(message: string): void {
   const el = document.getElementById('fatal');
@@ -35,16 +42,64 @@ function start(): void {
   fitCanvas();
   window.addEventListener('resize', fitCanvas);
 
-  // Sandbox world until the round flow (Task 8) replaces it.
-  const stats = deriveStats(defaultStatInput(CONFIG.stats), CONFIG.stats);
-  const world = createWorld(CONFIG, stats, createRng(Date.now() >>> 0));
   const input = new Input(CONFIG.bindings);
   input.attach(window);
+  const screens = createScreens(document, CONFIG);
+
+  let lastInput = defaultStatInput(CONFIG.stats);
+  // Start-screen backdrop: drawn but never stepped. Starting a round replaces it.
+  let world = newWorld(lastInput);
+  let state: AppState = 'start';
   let acc = 0;
-  const stop = startLoop((frameDt) => {
+
+  const pause = (): void => {
+    if (state !== 'playing') return;
+    state = 'paused';
+    screens.showPause(true);
+    input.clear();
+  };
+  const resume = (): void => {
+    state = 'playing';
+    screens.showPause(false);
+    acc = 0;
+  };
+  const play = (frameDt: number): void => {
     const a = advance(acc, frameDt, CONFIG.sim);
     acc = a.acc;
-    for (let i = 0; i < a.steps; i++) stepWorld(world, input, CONFIG.sim.step);
+    for (let i = 0; i < a.steps && !world.finished; i++) stepWorld(world, input, CONFIG.sim.step);
+    if (world.finished) {
+      state = 'results';
+      screens.showResults(toResult(world, lastInput));
+    }
+  };
+
+  screens.onStart((stats) => {
+    if (state !== 'start') return;
+    lastInput = stats;
+    input.clear();
+    world = newWorld(stats);
+    acc = 0;
+    screens.hideAll();
+    state = 'playing';
+  });
+  screens.onPlayAgain(() => {
+    if (state !== 'results') return;
+    state = 'start';
+    screens.showStart(lastInput);
+  });
+  window.addEventListener('blur', pause);
+  screens.showStart(lastInput);
+
+  const stop = startLoop((frameDt) => {
+    if (state === 'playing') {
+      if (input.consume('pause')) pause();
+      else play(frameDt);
+    } else if (state === 'paused') {
+      if (input.consume('pause')) resume();
+    } else {
+      // Discard Esc pressed on the start or results screen so it can't pause the next round.
+      input.consume('pause');
+    }
     drawWorld(renderer, world);
   });
   renderer.onContextLost(() => {
