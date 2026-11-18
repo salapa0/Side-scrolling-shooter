@@ -1,22 +1,17 @@
 import './style.css';
 import { CONFIG } from './config';
-import { rgb } from './engine/color';
-import { startLoop } from './engine/loop';
+import { Input } from './engine/input';
+import { advance, startLoop } from './engine/loop';
 import { Renderer, WebGL2UnavailableError } from './engine/renderer';
-import { createRng, type Rng } from './engine/rng';
+import { createRng } from './engine/rng';
+import { drawWorld } from './game/draw';
+import { stepWorld } from './game/step';
+import { createWorld } from './game/world';
+import { defaultStatInput, deriveStats } from './stats';
 
 const WEBGL2_MESSAGE =
   'This game needs WebGL2. Open it in an up-to-date Chrome or Edge with hardware acceleration turned on.';
 const CONTEXT_LOST_MESSAGE = 'The graphics driver reset. Press F5 to reload.';
-
-// Temporary test pattern (Task 5 replaces it).
-const SQUARE_COUNT = 3000;
-const STAIR_STEPS = 200;
-const WHITE = rgb('#ffffff');
-const PALETTE = [
-  CONFIG.colors.player, CONFIG.colors.drone, CONFIG.colors.enemyBullet,
-  CONFIG.colors.playerBullet, CONFIG.colors.boss,
-];
 
 function showFatal(message: string): void {
   const el = document.getElementById('fatal');
@@ -26,45 +21,6 @@ function showFatal(message: string): void {
   } else {
     document.body.textContent = message;
   }
-}
-
-/** Border and staircase show whether scaling stays sharp; the squares exercise batching. */
-function createTestPattern(rng: Rng): (r: Renderer, dt: number) => void {
-  const { width, height } = CONFIG.view;
-  const x = new Float32Array(SQUARE_COUNT);
-  const y = new Float32Array(SQUARE_COUNT);
-  const vx = new Float32Array(SQUARE_COUNT);
-  const vy = new Float32Array(SQUARE_COUNT);
-  const size = new Uint8Array(SQUARE_COUNT);
-  for (let i = 0; i < SQUARE_COUNT; i++) {
-    size[i] = 2 + Math.floor(rng() * 3);
-    x[i] = 1 + rng() * (width - 2 - size[i]);
-    y[i] = 1 + rng() * (height - 2 - size[i]);
-    const angle = rng() * Math.PI * 2;
-    const speed = 20 + rng() * 80;
-    vx[i] = Math.cos(angle) * speed;
-    vy[i] = Math.sin(angle) * speed;
-  }
-
-  return (r, dt) => {
-    r.begin(CONFIG.colors.bg);
-    for (let i = 0; i < SQUARE_COUNT; i++) {
-      const s = size[i];
-      x[i] += vx[i] * dt;
-      y[i] += vy[i] * dt;
-      if (x[i] < 1) { x[i] = 1; vx[i] = Math.abs(vx[i]); }
-      else if (x[i] > width - 1 - s) { x[i] = width - 1 - s; vx[i] = -Math.abs(vx[i]); }
-      if (y[i] < 1) { y[i] = 1; vy[i] = Math.abs(vy[i]); }
-      else if (y[i] > height - 1 - s) { y[i] = height - 1 - s; vy[i] = -Math.abs(vy[i]); }
-      r.rect(x[i], y[i], s, s, PALETTE[i % PALETTE.length]);
-    }
-    r.rect(0, 0, width, 1, WHITE);
-    r.rect(0, height - 1, width, 1, WHITE);
-    r.rect(0, 0, 1, height, WHITE);
-    r.rect(width - 1, 0, 1, height, WHITE);
-    for (let i = 0; i < STAIR_STEPS; i++) r.rect(8 + i, 8 + i, 1, 1, WHITE);
-    r.end();
-  };
 }
 
 function start(): void {
@@ -79,8 +35,18 @@ function start(): void {
   fitCanvas();
   window.addEventListener('resize', fitCanvas);
 
-  const drawPattern = createTestPattern(createRng(1));
-  const stop = startLoop((frameDt) => drawPattern(renderer, Math.min(frameDt, CONFIG.sim.maxFrameTime)));
+  // Sandbox world until the round flow (Task 8) replaces it.
+  const stats = deriveStats(defaultStatInput(CONFIG.stats), CONFIG.stats);
+  const world = createWorld(CONFIG, stats, createRng(Date.now() >>> 0));
+  const input = new Input(CONFIG.bindings);
+  input.attach(window);
+  let acc = 0;
+  const stop = startLoop((frameDt) => {
+    const a = advance(acc, frameDt, CONFIG.sim);
+    acc = a.acc;
+    for (let i = 0; i < a.steps; i++) stepWorld(world, input, CONFIG.sim.step);
+    drawWorld(renderer, world);
+  });
   renderer.onContextLost(() => {
     stop();
     showFatal(CONTEXT_LOST_MESSAGE);

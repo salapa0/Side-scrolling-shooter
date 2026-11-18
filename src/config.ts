@@ -10,7 +10,7 @@ export const CONFIG = {
     playTime: { min: 30, max: 300, default: 120 },
   },
   player: {
-    hp: 3, invulnTime: 1, speed: 140, w: 16, h: 10,                   // hp, invuln: spec §6.2
+    hp: 3, invulnTime: 1, blinkInterval: 0.08, speed: 140, w: 16, h: 10,  // hp, invuln: spec §6.2
     // Range the player's centre may occupy (left third). w: 0 = up/down only (spec §7).
     area: { x: 12, y: 24, w: 148, h: 236 },
     spawn: { x: 40, y: 142 },
