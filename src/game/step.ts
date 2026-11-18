@@ -1,4 +1,5 @@
 import type { InputState } from '../engine/input';
+import { updateBoss, updateDrones } from './enemies';
 import { updatePlayer } from './player';
 import { updateBullets } from './projectiles';
 import type { World } from './world';
@@ -11,7 +12,8 @@ export function stepWorld(w: World, input: InputState, dt: number): void {
   }
   w.time += dt;
   updatePlayer(w, input, dt);
-  // Slot 5: updateBoss and updateDrones (Task 6).
+  updateBoss(w, dt);
+  updateDrones(w, dt);
   updateBullets(w.playerBullets, dt, w.cfg.view);
   updateBullets(w.enemyBullets, dt, w.cfg.view);
   // Slot 7: resolveCombat (Task 7).
