@@ -1,5 +1,6 @@
 import './style.css';
 import { CONFIG } from './config';
+import { FrameStats } from './engine/frameStats';
 import { Input } from './engine/input';
 import { advance, startLoop } from './engine/loop';
 import { Renderer, WebGL2UnavailableError } from './engine/renderer';
@@ -9,6 +10,8 @@ import { toResult } from './game/round';
 import { stepWorld } from './game/step';
 import { createWorld, type World } from './game/world';
 import { defaultStatInput, deriveStats, type StatInput } from './stats';
+import { createDebugOverlay } from './ui/debug';
+import { createHud } from './ui/hud';
 import { createScreens } from './ui/screens';
 
 const WEBGL2_MESSAGE =
@@ -19,6 +22,17 @@ type AppState = 'start' | 'playing' | 'paused' | 'results';
 
 const newWorld = (input: StatInput): World =>
   createWorld(CONFIG, deriveStats(input, CONFIG.stats), createRng(Date.now() >>> 0));
+
+// ?stress: worst-case round for frame-rate checks. Zero damage keeps the boss in phase 3 so drones pile up to their cap.
+const STRESS = new URLSearchParams(window.location.search).has('stress');
+const STRESS_BOSS_HP = 0.24;
+
+function applyStress(w: World): void {
+  w.boss.hp = w.boss.maxHp * STRESS_BOSS_HP;
+  w.player.invuln = Infinity;
+  w.stats.shotDamage = 0;
+  w.stats.specialDamage = 0;
+}
 
 function showFatal(message: string): void {
   const el = document.getElementById('fatal');
@@ -35,9 +49,14 @@ function start(): void {
   if (!(canvas instanceof HTMLCanvasElement)) throw new Error('index.html has no <canvas id="game">.');
   const renderer = Renderer.create(canvas, CONFIG.view.width, CONFIG.view.height, CONFIG.caps.quads);
 
+  const hud = createHud(document);
+  const debug = createDebugOverlay(document);
+  const frameStats = new FrameStats();
+
   const fitCanvas = (): void => {
     const dpr = window.devicePixelRatio || 1;
-    renderer.resize(Math.round(canvas.clientWidth * dpr), Math.round(canvas.clientHeight * dpr));
+    const viewport = renderer.resize(Math.round(canvas.clientWidth * dpr), Math.round(canvas.clientHeight * dpr));
+    hud.layout(viewport, dpr);
   };
   fitCanvas();
   window.addEventListener('resize', fitCanvas);
@@ -51,6 +70,7 @@ function start(): void {
   let world = newWorld(lastInput);
   let state: AppState = 'start';
   let acc = 0;
+  let steps = 0;
 
   const pause = (): void => {
     if (state !== 'playing') return;
@@ -66,9 +86,11 @@ function start(): void {
   const play = (frameDt: number): void => {
     const a = advance(acc, frameDt, CONFIG.sim);
     acc = a.acc;
+    steps = a.steps;
     for (let i = 0; i < a.steps && !world.finished; i++) stepWorld(world, input, CONFIG.sim.step);
     if (world.finished) {
       state = 'results';
+      hud.setVisible(false);
       screens.showResults(toResult(world, lastInput));
     }
   };
@@ -78,19 +100,27 @@ function start(): void {
     lastInput = stats;
     input.clear();
     world = newWorld(stats);
+    if (STRESS) {
+      applyStress(world);
+      debug.setVisible(true);
+    }
     acc = 0;
     screens.hideAll();
     state = 'playing';
+    hud.setVisible(true);
   });
   screens.onPlayAgain(() => {
     if (state !== 'results') return;
     state = 'start';
+    hud.setVisible(false);
     screens.showStart(lastInput);
   });
   window.addEventListener('blur', pause);
   screens.showStart(lastInput);
 
   const stop = startLoop((frameDt) => {
+    steps = 0;
+    if (input.consume('debug')) debug.toggle();
     if (state === 'playing') {
       if (input.consume('pause')) pause();
       else play(frameDt);
@@ -101,6 +131,9 @@ function start(): void {
       input.consume('pause');
     }
     drawWorld(renderer, world);
+    if (state === 'playing' || state === 'paused') hud.update(world);
+    frameStats.record(frameDt * 1000);
+    debug.update(frameStats, steps, renderer.quadCount);
   });
   renderer.onContextLost(() => {
     stop();

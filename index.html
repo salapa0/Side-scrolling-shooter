@@ -10,6 +10,15 @@
   <body>
     <canvas id="game"></canvas>
 
+    <div id="hud" hidden aria-hidden="true">
+      <span id="hud-timer">0:00</span>
+      <span id="hud-hearts"></span>
+      <div id="hud-boss"><span>BOSS</span><div class="bar"><div id="hud-boss-fill"></div></div></div>
+      <span id="hud-kills">KILLS 0</span>
+      <div id="hud-special"><span id="hud-special-label">E READY</span><div class="bar"><div id="hud-special-fill"></div></div></div>
+    </div>
+    <div id="debug" hidden></div>
+
     <section id="start" class="screen" aria-labelledby="start-title" hidden>
       <div class="panel">
         <h1 id="start-title">SIDE-SCROLLING SHOOTER</h1>

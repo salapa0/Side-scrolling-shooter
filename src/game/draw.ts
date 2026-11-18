@@ -30,7 +30,8 @@ export function drawWorld(r: Renderer, w: World): void {
 
   const p = w.player;
   // Blink while invulnerable: hidden on alternate intervals.
-  const hidden = p.invuln > 0 && Math.floor(p.invuln / w.cfg.player.blinkInterval) % 2 === 1;
+  // Infinite invuln (stress mode) stays solid: no blink phase exists.
+  const hidden = p.invuln > 0 && Number.isFinite(p.invuln) && Math.floor(p.invuln / w.cfg.player.blinkInterval) % 2 === 1;
   if (!hidden && p.hp > 0) r.rect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h, colors.player);
 
   const beam = w.beam;
