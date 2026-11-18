@@ -1,0 +1,34 @@
+{
+  "name": "side-scrolling-shooter",
+  "version": "1.0.0",
+  "description": "A side-scrolling shooter game",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/salapa0/Side-scrolling-shooter.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/salapa0/Side-scrolling-shooter/issues"
+  },
+  "homepage": "https://github.com/salapa0/Side-scrolling-shooter#readme",
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vite-plugin-singlefile": "^2.3.4",
+    "vitest": "^4.1.12"
+  },
+  "private": true
+}
