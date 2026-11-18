@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Side-scrolling shooter</title>
+    <!-- Empty icon: stops the browser requesting /favicon.ico (no runtime network requests). -->
+    <link rel="icon" href="data:," />
   </head>
-  <body></body>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="fatal" role="alert" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>

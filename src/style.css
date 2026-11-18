@@ -1,0 +1,33 @@
+html,
+body {
+  margin: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+#game {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  /* Backstop: if the browser ever rescales the canvas, keep pixels hard-edged. */
+  image-rendering: pixelated;
+}
+
+#fatal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  /* Opaque: after a context loss Chrome paints a white placeholder over the canvas. */
+  background: #000;
+  color: #fff;
+  font: 20px/1.5 system-ui, sans-serif;
+  text-align: center;
+}
+
+/* display: flex above would otherwise override the hidden attribute. */
+#fatal[hidden] {
+  display: none;
+}
