@@ -5,6 +5,7 @@ import { SpatialGrid, type Stamped } from '../engine/grid';
 import { Pool } from '../engine/pool';
 import type { Rng } from '../engine/rng';
 import type { DerivedStats } from '../stats';
+import { createStarfield, type Starfield } from './background';
 
 export interface Body extends Box, Stamped { vx: number; vy: number }
 export interface Bullet extends Body { damage: number }
@@ -25,6 +26,7 @@ export interface World {
   drones: Pool<Drone>; playerBullets: Pool<Bullet>; enemyBullets: Pool<Bullet>; particles: Pool<Particle>;
   grid: SpatialGrid<Drone>; events: GameEvent[];
   fx: { shake: number; hitStop: number; flash: number };
+  stars: Starfield;
 }
 
 const GRID_CELL = 32;
@@ -63,5 +65,6 @@ export function createWorld(cfg: Config, stats: DerivedStats, rng: Rng): World {
     grid: new SpatialGrid<Drone>(view.width, view.height, GRID_CELL),
     events: [],
     fx: { shake: 0, hitStop: 0, flash: 0 },
+    stars: createStarfield(rng, cfg),
   };
 }
