@@ -1,4 +1,5 @@
 import type { InputState } from '../engine/input';
+import { resolveCombat } from './combat';
 import { updateBoss, updateDrones } from './enemies';
 import { updatePlayer } from './player';
 import { updateBullets } from './projectiles';
@@ -16,7 +17,7 @@ export function stepWorld(w: World, input: InputState, dt: number): void {
   updateDrones(w, dt);
   updateBullets(w.playerBullets, dt, w.cfg.view);
   updateBullets(w.enemyBullets, dt, w.cfg.view);
-  // Slot 7: resolveCombat (Task 7).
+  resolveCombat(w);
   // Slot 8: updateRound (Task 8).
   // Slot 9: updateEffects (Task 9).
 }

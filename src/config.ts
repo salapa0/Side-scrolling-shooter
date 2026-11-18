@@ -36,6 +36,7 @@ export const CONFIG = {
     droneBurst: 12, phaseBurst: 40, bossBurst: 120, playerBurst: 60, hitSparks: 2,
     shakeDrone: 2, shakeBeam: 4, shakePlayerHit: 6, shakePhase: 10, shakeBossKilled: 14, shakeDecay: 8,
     hitStopPlayerHit: 0.06, hitStopPhase: 0.12,
+    hitFlash: 0.06,
     flashPlayerHit: 0.1, flashPhase: 0.2, flashBossKilled: 0.3,
     particleLife: [0.25, 0.6], particleSpeed: [40, 160], particleDrag: 3,
   },

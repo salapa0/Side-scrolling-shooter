@@ -1,11 +1,13 @@
 import { clamp } from '../engine/geom';
 import type { InputState } from '../engine/input';
+import { fireBeam } from './combat';
 import type { World } from './world';
 
 export function updatePlayer(w: World, input: InputState, dt: number): void {
   const p = w.player;
   p.invuln = Math.max(0, p.invuln - dt);
   p.specialCd = Math.max(0, p.specialCd - dt);
+  w.beam.time = Math.max(0, w.beam.time - dt);
   if (w.status !== 'playing') return;
 
   const cfg = w.cfg.player;
@@ -26,5 +28,11 @@ export function updatePlayer(w: World, input: InputState, dt: number): void {
       b.damage = w.stats.shotDamage;
     }
     p.fireTimer += 1 / cfg.fireRate;
+  }
+
+  // consume() runs even on cooldown so early presses are never buffered.
+  if (input.consume('special') && p.specialCd <= 0) {
+    fireBeam(w);
+    p.specialCd = w.stats.specialCooldown;
   }
 }
