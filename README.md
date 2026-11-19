@@ -29,3 +29,7 @@ The game needs WebGL2, so keep browser hardware acceleration on.
 ## Backup: GitHub Pages
 
 If the booth PC cannot run the file, publish the contents of the built `dist/` folder (just `index.html`) to GitHub Pages and open that URL instead.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).
