@@ -21,7 +21,7 @@ test('a bullet over both a drone and the boss hits only the drone', () => {
 });
 test('enemy bullet hit costs 1 HP and grants invulnerability', () => {
   const w = makeWorld(); enemyShot(w, w.player.x, w.player.y); resolveCombat(w);
-  expect(w.player.hp).toBe(2); expect(w.player.invuln).toBe(1); expect(w.enemyBullets.count).toBe(0);
+  expect(w.player.hp).toBe(2); expect(w.player.invuln).toBe(1.5); expect(w.enemyBullets.count).toBe(0);
   expect(w.events[0]).toMatchObject({ type: 'playerHit' });
 });
 test('invulnerable player is not hit and the bullet survives', () => {
@@ -37,9 +37,29 @@ test('last hit emits playerKilled', () => {
   const w = makeWorld(); w.player.hp = 1; enemyShot(w, w.player.x, w.player.y); resolveCombat(w);
   expect(w.events.map((e) => e.type)).toContain('playerKilled');
 });
-test('after a hit, a second bullet in the same pass goes through untouched', () => {
+test('after a hit, a second bullet in the same pass does no damage', () => {
   const w = makeWorld(); enemyShot(w, w.player.x, w.player.y); enemyShot(w, w.player.x, w.player.y); resolveCombat(w);
-  expect(w.player.hp).toBe(2); expect(w.enemyBullets.count).toBe(1);
+  expect(w.player.hp).toBe(2); expect(w.enemyBullets.count).toBe(0);
+});
+test('a bullet grazing the ship outside the 8×4 hitbox misses', () => {
+  const w = makeWorld(); const p = w.player;
+  enemyShot(w, p.x + 7, p.y); enemyShot(w, p.x, p.y + 4.5); resolveCombat(w);
+  expect(p.hp).toBe(3); expect(w.enemyBullets.count).toBe(2);
+});
+test('a bullet inside the hitbox hits', () => {
+  const w = makeWorld(); enemyShot(w, w.player.x + 5, w.player.y); resolveCombat(w); expect(w.player.hp).toBe(2);
+});
+test('drone contact also uses the hitbox', () => {
+  const w = makeWorld(); drone(w, w.player.x + 13, w.player.y); resolveCombat(w);
+  expect(w.player.hp).toBe(3); expect(w.drones.count).toBe(1);
+});
+test('a hit clears enemy bullets within 48 px and keeps the rest', () => {
+  const w = makeWorld(); const p = w.player;
+  enemyShot(w, p.x, p.y); enemyShot(w, p.x + 40, p.y); const far = enemyShot(w, p.x + 60, p.y); resolveCombat(w);
+  expect(p.hp).toBe(2); expect(w.enemyBullets.count).toBe(1); expect(w.enemyBullets.get(0)).toBe(far);
+});
+test('no hit, no clear', () => {
+  const w = makeWorld(); enemyShot(w, w.player.x + 20, w.player.y); resolveCombat(w); expect(w.enemyBullets.count).toBe(1);
 });
 test('nothing collides once the round has ended', () => {
   const w = makeWorld(); w.status = 'lost'; enemyShot(w, w.player.x, w.player.y); resolveCombat(w);
@@ -48,7 +68,7 @@ test('nothing collides once the round has ended', () => {
 test('beam hits the boss for AMP × ATK and clears drones in its row', () => {
   const w = makeWorld(); w.player.y = w.boss.y; drone(w, 250, w.boss.y, 999); const outRow = drone(w, 250, w.boss.y - 60);
   fireBeam(w);
-  expect(w.boss.hp).toBe(w.boss.maxHp - 50); expect(w.kills).toBe(1);
+  expect(w.boss.hp).toBe(w.boss.maxHp - 200); expect(w.kills).toBe(1);
   expect(w.drones.count).toBe(1); expect(w.drones.get(0)).toBe(outRow);
   expect(w.beam.time).toBe(0.35);
   expect(w.events.map((e) => e.type)).toEqual(['bossHit', 'droneKilled', 'beamFired']);

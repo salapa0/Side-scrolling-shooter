@@ -10,7 +10,9 @@ import { toResult } from './game/round';
 import { stepWorld } from './game/step';
 import { createWorld, type World } from './game/world';
 import { defaultStatInput, deriveStats, type StatInput } from './stats';
-import { createDebugOverlay } from './ui/debug';
+import { createTally, type TallyStorage } from './tally';
+import { createConfirm } from './ui/confirm';
+import { createDevConsole } from './ui/devConsole';
 import { createHud } from './ui/hud';
 import { createScreens } from './ui/screens';
 
@@ -22,6 +24,15 @@ type AppState = 'start' | 'playing' | 'paused' | 'results';
 
 const newWorld = (input: StatInput): World =>
   createWorld(CONFIG, deriveStats(input, CONFIG.stats), createRng(Date.now() >>> 0));
+
+/** localStorage, or null where the browser blocks it (the round log then lives in memory). */
+function openStorage(): TallyStorage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
 
 // ?stress: sustained phase 3 for frame-rate checks. Zero damage keeps the boss there; drones leave
 // the screen, so it settles near 25-35 drones and ~240 quads, not the pool caps.
@@ -51,7 +62,9 @@ function start(): void {
   const renderer = Renderer.create(canvas, CONFIG.view.width, CONFIG.view.height, CONFIG.caps.quads);
 
   const hud = createHud(document);
-  const debug = createDebugOverlay(document);
+  const devConsole = createDevConsole(document);
+  const tally = createTally(openStorage(), CONFIG.tally.key, CONFIG.tally.cap, CONFIG.tally.bands);
+  const confirmClear = createConfirm(CONFIG.tally.confirmWindow * 1000);
   const frameStats = new FrameStats();
 
   const fitCanvas = (): void => {
@@ -93,7 +106,10 @@ function start(): void {
     if (world.finished) {
       state = 'results';
       hud.setVisible(false);
-      screens.showResults(toResult(world, lastInput));
+      const result = toResult(world, lastInput);
+      // Stress rounds can't be won, so they'd only skew the win rate.
+      if (!STRESS) tally.record({ ...result, bossMaxHp: CONFIG.boss.maxHp });
+      screens.showResults(result);
     }
   };
 
@@ -104,7 +120,7 @@ function start(): void {
     world = newWorld(stats);
     if (STRESS) {
       applyStress(world);
-      debug.setVisible(true);
+      devConsole.setVisible(true);
     }
     acc = 0;
     screens.hideAll();
@@ -125,7 +141,9 @@ function start(): void {
 
   const frame = (frameDt: number): void => {
     steps = 0;
-    if (input.consume('debug')) debug.toggle();
+    if (input.consume('debug')) devConsole.toggle();
+    // Consumed every frame so a press made while the console is hidden can't clear the log later.
+    if (input.consume('resetTally') && devConsole.visible && confirmClear.press(performance.now())) tally.clear(CONFIG.boss.maxHp);
     if (state === 'playing') {
       if (input.consume('pause')) pause();
       else play(frameDt);
@@ -138,7 +156,10 @@ function start(): void {
     drawWorld(renderer, world);
     if (state === 'playing' || state === 'paused') hud.update(world);
     frameStats.record(frameDt * 1000);
-    debug.update(frameStats, steps, renderer.quadCount);
+    devConsole.update(() => ({
+      appState: state, world, input: lastInput, frame: frameStats, steps, quads: renderer.quadCount,
+      tally: tally.summary(CONFIG.boss.maxHp), clearArmed: confirmClear.armed(performance.now()),
+    }));
   };
   // An exception would silently end the rAF chain and freeze the screen, so surface it.
   const stop = startLoop((frameDt) => {

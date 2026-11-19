@@ -1,3 +1,4 @@
+import type { Config } from '../config';
 import type { Color } from '../engine/color';
 import type { World } from './world';
 
@@ -13,6 +14,13 @@ function burst(w: World, x: number, y: number, count: number, color: Color): voi
     p.size = particleSize[0] + w.rng() * (particleSize[1] - particleSize[0]);
     p.color = color;
   }
+}
+
+/** Simulation speed for a given slow-mo time left: held at slowMoScale, then a linear ramp back to 1. */
+export function timeScaleFor(slowMo: number, fx: Config['fx']): number {
+  if (slowMo <= 0) return 1;
+  if (slowMo >= fx.slowMoRamp) return fx.slowMoScale;
+  return fx.slowMoScale + (1 - fx.slowMoScale) * (1 - slowMo / fx.slowMoRamp);
 }
 
 export function updateEffects(w: World, dt: number): void {
@@ -38,6 +46,13 @@ export function updateEffects(w: World, dt: number): void {
         f.shake = Math.max(f.shake, fx.shakePhase);
         f.flash = Math.max(f.flash, fx.flashPhase);
         burst(w, w.boss.x, w.boss.y, fx.phaseBurst, colors.bossBurst);
+        break;
+      case 'specialReady':
+        f.readyFlash = fx.readyFlashTime;
+        f.slowMo = fx.slowMoHold + fx.slowMoRamp;
+        break;
+      case 'powerUpCollected':
+        burst(w, e.x, e.y, fx.powerUpBurst, colors.powerUp[e.kind]);
         break;
       case 'beamFired':
         f.shake = Math.max(f.shake, fx.shakeBeam);

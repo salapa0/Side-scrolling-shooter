@@ -249,17 +249,42 @@ body {
   background: var(--ui-win);
 }
 
-#debug {
-  position: fixed;
+#hud-rapid {
+  color: var(--ui-win);
+}
+
+/* Centred under the top row; out of the flex flow so it never shifts the bars. */
+#hud-toast {
+  position: absolute;
+  top: 2.5em;
   left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 1.25em;
+  color: var(--ui-accent);
+}
+
+#hud-rapid:empty,
+#hud-toast:empty {
+  display: none;
+}
+
+/* Bottom-right, away from the player's left-third movement area. */
+#dev-console {
+  position: fixed;
+  right: 0;
   bottom: 0;
+  max-width: 100vw;
+  box-sizing: border-box;
   padding: 0.25em 0.5em;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
   color: #7dff9a;
-  font: 14px/1.3 ui-monospace, Consolas, monospace;
+  font: 13px/1.35 ui-monospace, Consolas, monospace;
+  white-space: pre;
+  overflow: hidden;
   pointer-events: none;
 }
 
-#debug[hidden] {
+#dev-console[hidden] {
   display: none;
 }

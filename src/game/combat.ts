@@ -1,9 +1,11 @@
 import { overlaps, type Box } from '../engine/geom';
+import { maybeDropPowerUp } from './powerups';
 import type { Drone, World } from './world';
 
 // Reused every call so combat never allocates in the step loop.
 const candidates: Drone[] = [];
 const beamBox: Box = { x: 0, y: 0, w: 0, h: 0 };
+const hurtBox: Box = { x: 0, y: 0, w: 0, h: 0 };
 
 function hurtPlayer(w: World, damage: number): void {
   const p = w.player;
@@ -13,11 +15,19 @@ function hurtPlayer(w: World, damage: number): void {
   if (p.hp <= 0) w.events.push({ type: 'playerKilled', x: p.x, y: p.y });
 }
 
-function killDrone(w: World, i: number): void {
+/** canDrop is false for Kill all, so one screen clear never chains into more power-ups. */
+function killDrone(w: World, i: number, canDrop: boolean): void {
   const d = w.drones.get(i);
   w.events.push({ type: 'droneKilled', x: d.x, y: d.y });
   w.kills += 1;
+  if (canDrop) maybeDropPowerUp(w, d.x, d.y);
   w.drones.releaseAt(i);
+}
+
+/** Kill all power-up: every drone dies (counted), all enemy fire vanishes, the boss is untouched. */
+export function clearScreen(w: World): void {
+  for (let i = w.drones.count - 1; i >= 0; i--) killDrone(w, i, false);
+  w.enemyBullets.clear();
 }
 
 export function resolveCombat(w: World): void {
@@ -40,7 +50,7 @@ export function resolveCombat(w: World): void {
       target.flash = w.cfg.fx.hitFlash;
       if (target.hp <= 0) {
         for (let k = w.drones.count - 1; k >= 0; k--) {
-          if (w.drones.get(k) === target) { killDrone(w, k); break; }
+          if (w.drones.get(k) === target) { killDrone(w, k, true); break; }
         }
       }
       bullets.releaseAt(i);
@@ -53,20 +63,42 @@ export function resolveCombat(w: World): void {
 
   // While invulnerable, enemy fire and drones pass through without being used up.
   const p = w.player;
+  hurtBox.x = p.x; hurtBox.y = p.y; hurtBox.w = w.cfg.player.hitW; hurtBox.h = w.cfg.player.hitH;
+  const hpBefore = p.hp;
   const shots = w.enemyBullets;
   for (let i = shots.count - 1; i >= 0 && p.invuln <= 0; i--) {
-    if (overlaps(shots.get(i), p)) {
+    if (overlaps(shots.get(i), hurtBox)) {
       const damage = shots.get(i).damage;
       shots.releaseAt(i);
       hurtPlayer(w, damage);
     }
   }
   for (let i = w.drones.count - 1; i >= 0 && p.invuln <= 0; i--) {
-    if (overlaps(w.drones.get(i), p)) {
+    if (overlaps(w.drones.get(i), hurtBox)) {
       w.drones.releaseAt(i);
       hurtPlayer(w, 1);
     }
   }
+  // After the loops: releasing mid-loop would scramble their swap-remove indices.
+  if (p.hp < hpBefore) clearShotsNear(w, p.x, p.y, w.cfg.player.hitClearRadius);
+}
+
+function clearShotsNear(w: World, x: number, y: number, radius: number): void {
+  const shots = w.enemyBullets;
+  const r2 = radius * radius;
+  for (let i = shots.count - 1; i >= 0; i--) {
+    const b = shots.get(i);
+    const dx = b.x - x, dy = b.y - y;
+    if (dx * dx + dy * dy <= r2) shots.releaseAt(i);
+  }
+}
+
+/** Ends the special cooldown now and announces it; does nothing when E is already ready. */
+export function readySpecial(w: World): void {
+  const p = w.player;
+  if (p.specialCd <= 0) return;
+  p.specialCd = 0;
+  w.events.push({ type: 'specialReady', x: p.x, y: p.y });
 }
 
 export function fireBeam(w: World): void {
@@ -87,7 +119,7 @@ export function fireBeam(w: World): void {
     w.events.push({ type: 'bossHit', x: boss.x, y: boss.y });
   }
   for (let i = w.drones.count - 1; i >= 0; i--) {
-    if (overlaps(beamBox, w.drones.get(i))) killDrone(w, i);
+    if (overlaps(beamBox, w.drones.get(i))) killDrone(w, i, true);
   }
   w.events.push({ type: 'beamFired', x: player.x, y: player.y });
 }

@@ -95,13 +95,14 @@ Shows: Win / Fail, kill count, time remaining (on win), and the stats the player
 ```
 ATK              = BASE_ATK + FlatAttack
 Auto-shot damage = ATK
-Special damage   = AMP × ATK           (AMP is a constant C, tunable)
+AMP              = min(AMP_MAX, AMP_MIN + AMP_K · ln(1 + FlatAttack / AMP_SCALE))
+Special damage   = AMP × ATK           (AMP grows logarithmically with Flat Attack, capped)
 Special cooldown = BASE_CD × (1 − CDReduction / 100)
 ```
 
 ### 6.2 Player
 - **Auto-fire:** shoots forward (to the right) continuously at a fixed rate.
-- **HP:** 3 hits **[builder's call]**, with a short invulnerability window (~1 s, avatar flashes) after each hit.
+- **HP:** 3 hits **[builder's call]**, with a 1.5 s invulnerability window (avatar flashes) after each hit; enemy fire within 48 px vanishes on a hit. Only an 8×4 hitbox in the middle of the 16×10 ship takes damage (empathy design).
 - **Movement:** free movement in four directions inside a rectangular area covering the **left third** of the play field.
 
 ### 6.3 Special skill [E]
@@ -122,7 +123,7 @@ Special cooldown = BASE_CD × (1 − CDReduction / 100)
 Firing is automatic; there is no fire key.
 
 ### 6.5 Starting tuning values (placeholders, all in one config file)
-`BASE_ATK = 10`, `AMP = 5`, `BASE_CD = 8 s`, fire rate 8 shots/s, boss HP sized so a player with no bonuses wins in about 75% of the default Play Time. All of these are expected to change.
+`BASE_ATK = 10`, AMP curve `AMP_MIN = 20, AMP_MAX = 40, AMP_K = 5, AMP_SCALE = 5` (AMP 20 at Flat Attack 0, capped at 40 from about 268), `BASE_CD = 8 s`, fire rate 8 shots/s, boss HP 6000 (a player with no bonuses wins in about 65% of the default Play Time; tuned toward an 80% player win rate, see `docs/superpowers/specs/2026-11-19-empathy-design.md`). All of these are expected to change.
 
 ## 7. Built for change
 
@@ -159,7 +160,7 @@ These are what make the game worth showing at a Computer Engineering festival. E
 - Hard caps on simultaneous drones, bullets, and particles; object pooling so busy moments don't trigger garbage-collection stutter.
 - Small textures (pixel art in one atlas) to respect the iGPU's shared memory.
 - **Effects quality** setting (see 5.1): High = all shaders, Low = glow only at reduced cost, Off = no post-processing.
-- An **FPS / frame-time overlay** on a debug key (**[builder's call]** F3).
+- A read-only **dev console** on a debug key (**[builder's call]** F3). It shows FPS and frame time plus every live game value, and the round log's win rate (empathy design §5.9).
 - **Test on the actual workstation early**, as soon as the renderer runs, and again before the festival.
 
 ## 10. Left to the builder

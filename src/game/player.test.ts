@@ -41,3 +41,13 @@ test('a full bullet pool skips the shot without throwing', () => {
   const w = makeWorld(); while (w.playerBullets.acquire()) { /* fill */ }
   expect(() => run(w, fakeInput(), 0.5, updatePlayerOnly)).not.toThrow();
 });
+test('specialReady fires once when the cooldown runs out', () => {
+  const w = makeWorld(); w.player.specialCd = 0.01; updatePlayer(w, fakeInput(), 1 / 60);
+  expect(w.events.map((e) => e.type)).toContain('specialReady');
+  w.events.length = 0; updatePlayer(w, fakeInput(), 1 / 60); expect(w.events).toEqual([]);
+});
+test('no specialReady at round start (E starts ready) or after the round ends', () => {
+  const w = makeWorld(); run(w, fakeInput(), 0.1, updatePlayerOnly); expect(w.events.map((e) => e.type)).not.toContain('specialReady');
+  const v = makeWorld(); v.status = 'won'; v.player.specialCd = 0.01; updatePlayer(v, fakeInput(), 1 / 60);
+  expect(v.events.map((e) => e.type)).not.toContain('specialReady');
+});

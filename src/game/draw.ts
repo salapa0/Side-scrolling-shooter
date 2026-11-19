@@ -7,6 +7,15 @@ import type { World } from './world';
 const beamColor: [number, number, number, number] = [0, 0, 0, 1];
 const particleColor: [number, number, number, number] = [0, 0, 0, 1];
 const flashColor: [number, number, number, number] = [1, 1, 1, 0];
+const readyColor: [number, number, number, number] = [0, 0, 0, 0];
+const lowHpColor: [number, number, number, number] = [0, 0, 0, 0];
+
+/** Last-heart warning strength. Driven by world time, so it holds still while paused. */
+export function lowHpAlpha(w: World): number {
+  if (w.status !== 'playing' || w.player.hp !== 1) return 0;
+  const { lowHpAlpha: max, lowHpPulseHz: hz } = w.cfg.fx;
+  return max * (0.5 + 0.5 * Math.sin(2 * Math.PI * hz * w.time));
+}
 
 export function drawWorld(r: Renderer, w: World): void {
   const { colors } = w.cfg;
@@ -20,6 +29,14 @@ export function drawWorld(r: Renderer, w: World): void {
   for (let i = 0; i < w.drones.count; i++) {
     const d = w.drones.get(i);
     r.rect(d.x - d.w / 2, d.y - d.h / 2, d.w, d.h, d.flash > 0 ? colors.hitFlash : colors.drone);
+  }
+
+  const pu = w.cfg.powerUps;
+  for (let i = 0; i < w.powerUps.count; i++) {
+    const u = w.powerUps.get(i);
+    // Blinking white outline so pickups read as rewards, not threats.
+    if (Math.floor(u.age / pu.blinkInterval) % 2 === 0) r.rect(u.x - u.w / 2 - 1, u.y - u.h / 2 - 1, u.w + 2, u.h + 2, colors.hitFlash);
+    r.rect(u.x - u.w / 2, u.y - u.h / 2, u.w, u.h, colors.powerUp[u.kind]);
   }
 
   const bullets = w.playerBullets;
@@ -51,6 +68,14 @@ export function drawWorld(r: Renderer, w: World): void {
     r.rect(q.x - q.size / 2, q.y - q.size / 2, q.size, q.size, particleColor);
   }
 
+  // E-ready tint goes under enemy fire, so the flash never hides a bullet.
+  if (w.fx.readyFlash > 0) {
+    const c: Color = colors.readyFlash;
+    readyColor[0] = c[0]; readyColor[1] = c[1]; readyColor[2] = c[2];
+    readyColor[3] = w.cfg.fx.readyFlashAlpha * (w.fx.readyFlash / w.cfg.fx.readyFlashTime);
+    r.rect(0, 0, w.cfg.view.width, w.cfg.view.height, readyColor);
+  }
+
   // Enemy fire after particles so it stays readable over everything else.
   const shots = w.enemyBullets;
   for (let i = 0; i < shots.count; i++) {
@@ -61,6 +86,18 @@ export function drawWorld(r: Renderer, w: World): void {
   if (w.fx.flash > 0) {
     flashColor[3] = Math.min(1, w.fx.flash / w.cfg.fx.flashPhase) * 0.6;
     r.rect(0, 0, w.cfg.view.width, w.cfg.view.height, flashColor);
+  }
+
+  const warn = lowHpAlpha(w);
+  if (warn > 0) {
+    const c: Color = colors.lowHp;
+    lowHpColor[0] = c[0]; lowHpColor[1] = c[1]; lowHpColor[2] = c[2]; lowHpColor[3] = warn;
+    const { width, height } = w.cfg.view;
+    const e = w.cfg.fx.lowHpEdge;
+    r.rect(0, 0, width, e, lowHpColor);
+    r.rect(0, height - e, width, e, lowHpColor);
+    r.rect(0, e, e, height - 2 * e, lowHpColor);
+    r.rect(width - e, e, e, height - 2 * e, lowHpColor);
   }
 
   r.end();

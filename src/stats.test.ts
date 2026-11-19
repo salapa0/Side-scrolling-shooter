@@ -1,17 +1,25 @@
 import { expect, test } from 'vitest';
 import { CONFIG } from './config';
-import { defaultStatInput, deriveStats, parseStatInput } from './stats';
+import { ampFor, defaultStatInput, deriveStats, parseStatInput } from './stats';
 import type { RawStatInput } from './stats';
 
 const S = CONFIG.stats;
 const raw = (f: string, c: string, p: string): RawStatInput => ({ flatAttack: f, cdReduction: c, playTime: p });
 
 test('derives stats from formulas', () => {
-  expect(deriveStats({ flatAttack: 5, cdReduction: 25, playTime: 90 }, S))
-    .toEqual({ atk: 15, shotDamage: 15, specialDamage: 75, specialCooldown: 6, playTime: 90 });
+  const d = deriveStats({ flatAttack: 5, cdReduction: 25, playTime: 90 }, S);
+  expect(d).toMatchObject({ atk: 15, shotDamage: 15, specialCooldown: 6, playTime: 90 });
+  expect(d.amp).toBeCloseTo(23.47, 2); expect(d.specialDamage).toBeCloseTo(15 * d.amp);
 });
 test('defaults give base stats', () => {
-  expect(deriveStats(defaultStatInput(S), S)).toMatchObject({ atk: 10, specialDamage: 50, specialCooldown: 8, playTime: 120 });
+  expect(deriveStats(defaultStatInput(S), S)).toMatchObject({ atk: 10, amp: 20, specialDamage: 200, specialCooldown: 8, playTime: 120 });
+});
+test.each([[0, 20], [5, 23.47], [10, 25.49], [50, 31.99], [100, 35.22], [268, 40], [999, 40]])('ampFor(%i) ≈ %f', (flat, out) => {
+  expect(ampFor(flat, S.amp)).toBeCloseTo(out, 2);
+});
+test('AMP never drops as Flat Attack rises and never passes the cap', () => {
+  let prev = 0;
+  for (let f = 0; f <= 999; f++) { const a = ampFor(f, S.amp); expect(a).toBeGreaterThanOrEqual(prev); expect(a).toBeLessThanOrEqual(40); prev = a; }
 });
 test('max CD reduction', () => {
   expect(deriveStats({ flatAttack: 0, cdReduction: 80, playTime: 120 }, S).specialCooldown).toBeCloseTo(1.6);

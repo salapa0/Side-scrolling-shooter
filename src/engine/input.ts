@@ -1,4 +1,7 @@
-export type Action = 'up' | 'down' | 'left' | 'right' | 'special' | 'pause' | 'debug';
+export type Action = 'up' | 'down' | 'left' | 'right' | 'special' | 'pause' | 'debug' | 'resetTally';
+
+// Dev-console keys still work while staff type stats into the start form.
+const CONSOLE_ACTIONS: ReadonlySet<Action> = new Set<Action>(['debug', 'resetTally']);
 
 export interface InputState {
   isDown(a: Action): boolean;
@@ -46,8 +49,12 @@ export class Input implements InputState {
   }
 
   attach(target: Window): () => void {
-    // Keys typed into the start form must never reach the game.
-    const fromTextField = (e: KeyboardEvent): boolean => e.target instanceof HTMLInputElement;
+    // Keys typed into the start form must never reach the game; console keys are the exception.
+    const fromTextField = (e: KeyboardEvent): boolean => {
+      if (!(e.target instanceof HTMLInputElement)) return false;
+      const action = this.codeToAction.get(e.code);
+      return action === undefined || !CONSOLE_ACTIONS.has(action);
+    };
     const onKeyDown = (e: KeyboardEvent): void => {
       if (fromTextField(e)) return;
       if (this.keyDown(e.code, e.repeat)) e.preventDefault();

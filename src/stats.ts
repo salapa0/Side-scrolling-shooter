@@ -10,6 +10,7 @@ export type ParseResult =
 export interface DerivedStats {
   atk: number;
   shotDamage: number;
+  amp: number;
   specialDamage: number;
   specialCooldown: number;
   playTime: number;
@@ -51,12 +52,19 @@ export function defaultStatInput(cfg: Stats): StatInput {
   };
 }
 
+/** Beam multiplier: rises steeply for small Flat Attack, then flattens and stops at the cap. */
+export function ampFor(flatAttack: number, amp: Stats['amp']): number {
+  return Math.min(amp.max, amp.min + amp.k * Math.log(1 + flatAttack / amp.scale));
+}
+
 export function deriveStats(input: StatInput, cfg: Stats): DerivedStats {
   const atk = cfg.baseAtk + input.flatAttack;
+  const amp = ampFor(input.flatAttack, cfg.amp);
   return {
     atk,
     shotDamage: atk,
-    specialDamage: cfg.amp * atk,
+    amp,
+    specialDamage: amp * atk,
     specialCooldown: cfg.baseCd * (1 - input.cdReduction / 100),
     playTime: input.playTime,
   };

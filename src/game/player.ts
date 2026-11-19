@@ -1,12 +1,15 @@
 import { clamp } from '../engine/geom';
 import type { InputState } from '../engine/input';
-import { fireBeam } from './combat';
+import { fireBeam, readySpecial } from './combat';
 import type { World } from './world';
 
 export function updatePlayer(w: World, input: InputState, dt: number): void {
   const p = w.player;
   p.invuln = Math.max(0, p.invuln - dt);
-  p.specialCd = Math.max(0, p.specialCd - dt);
+  p.rapid = Math.max(0, p.rapid - dt);
+  // Crossing zero while playing announces E is ready; at round start E is already ready, so nothing fires.
+  if (p.specialCd > 0 && p.specialCd - dt <= 0 && w.status === 'playing') readySpecial(w);
+  else p.specialCd = Math.max(0, p.specialCd - dt);
   w.beam.time = Math.max(0, w.beam.time - dt);
   if (w.status !== 'playing') return;
 
@@ -18,6 +21,7 @@ export function updatePlayer(w: World, input: InputState, dt: number): void {
   p.x = clamp(p.x + dx * cfg.speed * dt, area.x, area.x + area.w);
   p.y = clamp(p.y + dy * cfg.speed * dt, area.y, area.y + area.h);
 
+  const fireRate = cfg.fireRate * (p.rapid > 0 ? cfg.rapidMultiplier : 1);
   p.fireTimer -= dt;
   while (p.fireTimer <= 0) {
     const b = w.playerBullets.acquire();
@@ -27,7 +31,7 @@ export function updatePlayer(w: World, input: InputState, dt: number): void {
       b.w = cfg.bulletW; b.h = cfg.bulletH;
       b.damage = w.stats.shotDamage;
     }
-    p.fireTimer += 1 / cfg.fireRate;
+    p.fireTimer += 1 / fireRate;
   }
 
   // consume() runs even on cooldown so early presses are never buffered.

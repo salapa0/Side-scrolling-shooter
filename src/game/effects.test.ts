@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { createRng } from '../engine/rng';
 import { CONFIG } from '../config';
 import { createStarfield } from './background';
-import { updateEffects } from './effects';
+import { timeScaleFor, updateEffects } from './effects';
 import { fakeInput, makeWorld, run } from './testUtils';
 
 test('drone death bursts particles', () => {
@@ -15,7 +15,7 @@ test('particles expire', () => {
 });
 test('player hit triggers hit-stop, shake, and flash', () => {
   const w = makeWorld(); w.events.push({ type: 'playerHit', x: 0, y: 0 }); updateEffects(w, 0);
-  expect(w.fx).toEqual({ hitStop: 0.06, shake: 6, flash: 0.1 });
+  expect(w.fx).toMatchObject({ hitStop: 0.06, shake: 6, flash: 0.1 });
 });
 test('shake settles', () => {
   const w = makeWorld(); w.fx.shake = 14; run(w, fakeInput(), 2, (w, _i, dt) => updateEffects(w, dt));
@@ -37,7 +37,7 @@ test('boss hit flashes the boss and throws sparks', () => {
 });
 test('phase change freezes, flashes and bursts', () => {
   const w = makeWorld(); w.events.push({ type: 'phaseChanged', phase: 2, x: 300, y: 100 }); updateEffects(w, 0);
-  expect(w.fx).toEqual({ hitStop: 0.12, shake: 10, flash: 0.2 }); expect(w.particles.count).toBe(40);
+  expect(w.fx).toMatchObject({ hitStop: 0.12, shake: 10, flash: 0.2 }); expect(w.particles.count).toBe(40);
 });
 test('flash decays linearly to zero', () => {
   const w = makeWorld(); w.fx.flash = 0.1; updateEffects(w, 0.04);
@@ -48,4 +48,13 @@ test('starfield has the configured stars per layer', () => {
   expect(s.x.length).toBe(110);
   expect(Array.from(s.layer.slice(0, 60)).every((l) => l === 0)).toBe(true);
   expect(s.layer[109]).toBe(2);
+});
+
+test.each([[0, 1], [-1, 1], [0.45, 0.35], [0.15, 0.35], [0.075, 0.675]])('timeScaleFor(%f) = %f', (t, out) => {
+  expect(timeScaleFor(t, CONFIG.fx)).toBeCloseTo(out);
+});
+
+test('collecting a power-up bursts particles in its colour', () => {
+  const w = makeWorld(); w.events.push({ type: 'powerUpCollected', kind: 'health', x: 50, y: 50 }); updateEffects(w, 1 / 60);
+  expect(w.particles.count).toBe(16); expect(w.particles.get(0).color).toBe(w.cfg.colors.powerUp.health);
 });

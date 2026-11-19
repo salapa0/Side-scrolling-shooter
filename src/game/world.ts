@@ -10,22 +10,30 @@ import { createStarfield, type Starfield } from './background';
 export interface Body extends Box, Stamped { vx: number; vy: number }
 export interface Bullet extends Body { damage: number }
 export interface Drone extends Body { hp: number; age: number; baseY: number; fireTimer: number; flash: number }
+export type PowerUpKind = 'rapid' | 'health' | 'charge' | 'clear';
+export const POWER_UP_KINDS: readonly PowerUpKind[] = ['rapid', 'health', 'charge', 'clear'];
+export interface PowerUp extends Box { kind: PowerUpKind; age: number; baseY: number }
 export interface Particle { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; size: number; color: Color }
-export interface Player extends Box { hp: number; invuln: number; fireTimer: number; specialCd: number }
+export interface Player extends Box { hp: number; invuln: number; fireTimer: number; specialCd: number; rapid: number }
 export interface Boss extends Box { hp: number; maxHp: number; phase: 1 | 2 | 3; age: number; droneTimer: number; spreadTimer: number; spiralTimer: number; spiralAngle: number; flash: number }
 export interface Beam { x: number; y: number; time: number }               // time > 0 while visible
 export type GameEvent =
   | { type: 'droneKilled' | 'bossHit' | 'playerHit' | 'bossKilled' | 'playerKilled'; x: number; y: number }
   | { type: 'phaseChanged'; phase: 2 | 3; x: number; y: number }
-  | { type: 'beamFired'; x: number; y: number };
+  | { type: 'beamFired'; x: number; y: number }
+  | { type: 'specialReady'; x: number; y: number }
+  | { type: 'powerUpCollected'; kind: PowerUpKind; x: number; y: number };
 export interface World {
   cfg: Config; stats: DerivedStats; rng: Rng;
   time: number; timeLeft: number; kills: number;
   status: 'playing' | 'won' | 'lost'; reason: 'boss' | 'time' | 'hp' | null; endTimer: number; finished: boolean;
   player: Player; boss: Boss; beam: Beam;
   drones: Pool<Drone>; playerBullets: Pool<Bullet>; enemyBullets: Pool<Bullet>; particles: Pool<Particle>;
+  powerUps: Pool<PowerUp>;
+  lastPickup: { kind: PowerUpKind | null; time: number };           // mutated in place for the HUD label
   grid: SpatialGrid<Drone>; events: GameEvent[];
-  fx: { shake: number; hitStop: number; flash: number };
+  // readyFlash and slowMo count down in real time; timeScale is what the current step runs at.
+  fx: { shake: number; hitStop: number; flash: number; readyFlash: number; slowMo: number; timeScale: number };
   stars: Starfield;
 }
 
@@ -35,6 +43,7 @@ export const blankBullet = (): Bullet => ({ x: 0, y: 0, w: 0, h: 0, stamp: 0, vx
 export const blankDrone = (): Drone => ({
   x: 0, y: 0, w: 0, h: 0, stamp: 0, vx: 0, vy: 0, hp: 0, age: 0, baseY: 0, fireTimer: 0, flash: 0,
 });
+export const blankPowerUp = (): PowerUp => ({ x: 0, y: 0, w: 0, h: 0, kind: 'rapid', age: 0, baseY: 0 });
 // Colours are shared references; spawners overwrite `color`, never copy it.
 export const blankParticle = (): Particle => ({
   x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 0, size: 0, color: CONFIG.colors.player,
@@ -50,7 +59,7 @@ export function createWorld(cfg: Config, stats: DerivedStats, rng: Rng): World {
     player: {
       x: clamp(player.spawn.x, area.x, area.x + area.w),
       y: clamp(player.spawn.y, area.y, area.y + area.h),
-      w: player.w, h: player.h, hp: player.hp, invuln: 0, fireTimer: 0, specialCd: 0,
+      w: player.w, h: player.h, hp: player.hp, invuln: 0, fireTimer: 0, specialCd: 0, rapid: 0,
     },
     boss: {
       x: boss.phases[0].x, y: boss.centerY, w: boss.w, h: boss.h,
@@ -62,9 +71,11 @@ export function createWorld(cfg: Config, stats: DerivedStats, rng: Rng): World {
     playerBullets: new Pool(caps.playerBullets, blankBullet),
     enemyBullets: new Pool(caps.enemyBullets, blankBullet),
     particles: new Pool(caps.particles, blankParticle),
+    powerUps: new Pool(caps.powerUps, blankPowerUp),
+    lastPickup: { kind: null, time: 0 },
     grid: new SpatialGrid<Drone>(view.width, view.height, GRID_CELL),
     events: [],
-    fx: { shake: 0, hitStop: 0, flash: 0 },
+    fx: { shake: 0, hitStop: 0, flash: 0, readyFlash: 0, slowMo: 0, timeScale: 1 },
     stars: createStarfield(rng, cfg),
   };
 }
