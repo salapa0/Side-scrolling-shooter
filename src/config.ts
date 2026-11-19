@@ -40,7 +40,7 @@ export const CONFIG = {
     flashPlayerHit: 0.1, flashPhase: 0.2, flashBossKilled: 0.3,
     particleLife: [0.25, 0.6], particleSpeed: [40, 160], particleDrag: 3, particleSize: [1, 2],
   },
-  round: { endDelay: 1.5 },
+  round: { endDelay: 1.5, resultsLockout: 1 },
   bindings: {                                                          // spec §6.4; codes are KeyboardEvent.code
     up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'],
     left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],

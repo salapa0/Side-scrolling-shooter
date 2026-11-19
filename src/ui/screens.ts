@@ -54,7 +54,14 @@ export function createScreens(doc: Document, cfg: Config): Screens {
     fields[key].input.setAttribute('aria-invalid', String(message !== ''));
   };
 
+  let lockoutTimer: ReturnType<typeof setTimeout> | null = null;
+  const cancelLockout = (): void => {
+    if (lockoutTimer !== null) clearTimeout(lockoutTimer);
+    lockoutTimer = null;
+  };
+
   const hideAll = (): void => {
+    cancelLockout();
     // A control left focused under a hidden overlay would swallow game keys, or re-submit on Enter.
     const active = doc.activeElement;
     if (active instanceof HTMLElement && overlays.some((o) => o.contains(active))) active.blur();
@@ -78,6 +85,12 @@ export function createScreens(doc: Document, cfg: Config): Screens {
     if (firstBad) fields[firstBad].input.focus();
   });
   playAgain.addEventListener('click', () => playAgainCb?.());
+  // Space would activate the button on keyup; walk-up players mash it, so only Enter and click count.
+  const blockSpace = (e: KeyboardEvent): void => {
+    if (e.code === 'Space') e.preventDefault();
+  };
+  playAgain.addEventListener('keydown', blockSpace);
+  playAgain.addEventListener('keyup', blockSpace);
 
   return {
     showStart(prefill) {
@@ -102,7 +115,13 @@ export function createScreens(doc: Document, cfg: Config): Screens {
       resultsStats.textContent = `Flat Attack ${s.flatAttack} · CD Reduction ${s.cdReduction}% · Play Time ${s.playTime} s`;
       hideAll();
       results.hidden = false;
-      playAgain.focus();
+      // Locked out briefly so keys still held from play can't dismiss the results.
+      playAgain.disabled = true;
+      lockoutTimer = setTimeout(() => {
+        lockoutTimer = null;
+        playAgain.disabled = false;
+        playAgain.focus();
+      }, cfg.round.resultsLockout * 1000);
     },
     onPlayAgain(cb) { playAgainCb = cb; },
     hideAll,
