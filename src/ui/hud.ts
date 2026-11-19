@@ -34,8 +34,8 @@ export function createHud(doc: Document): Hud {
   const specialLabel = need(doc, 'hud-special-label');
 
   // Cached last-written values so the DOM is only touched on change.
-  let lastTimer = '';
-  let lastHearts = '';
+  let lastSecond = NaN;
+  let lastHp = NaN;
   let lastBoss = -1;
   let lastKills = -1;
   let lastSpecial = -1;
@@ -50,11 +50,11 @@ export function createHud(doc: Document): Hud {
       root.style.fontSize = `${(8 * v.scale) / dpr}px`;
     },
     update(w) {
-      const t = formatTime(w.timeLeft);
-      if (t !== lastTimer) { lastTimer = t; timer.textContent = t; }
+      // Format only when the displayed second or HP changes, not every frame.
+      const second = Math.ceil(w.timeLeft);
+      if (second !== lastSecond) { lastSecond = second; timer.textContent = formatTime(w.timeLeft); }
 
-      const h = heartString(w.player.hp, w.cfg.player.hp);
-      if (h !== lastHearts) { lastHearts = h; hearts.textContent = h; }
+      if (w.player.hp !== lastHp) { lastHp = w.player.hp; hearts.textContent = heartString(w.player.hp, w.cfg.player.hp); }
 
       const boss = Math.max(0, Math.min(1, w.boss.hp / w.boss.maxHp));
       if (boss !== lastBoss) { lastBoss = boss; bossFill.style.width = `${boss * 100}%`; }
