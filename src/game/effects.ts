@@ -51,6 +51,11 @@ export function updateEffects(w: World, dt: number): void {
         f.readyFlash = fx.readyFlashTime;
         f.slowMo = fx.slowMoHold + fx.slowMoRamp;
         break;
+      case 'killingShot':
+        f.impact = fx.impactTime;
+        f.hitStop = Math.max(f.hitStop, fx.impactTime);
+        f.shake = Math.max(f.shake, fx.shakeKillingShot);
+        break;
       case 'powerUpCollected':
         burst(w, e.x, e.y, fx.powerUpBurst, colors.powerUp[e.kind]);
         break;

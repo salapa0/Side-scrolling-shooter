@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { lowHpAlpha } from './draw';
+import { lowHpAlpha, readyGlyphVisible } from './draw';
 import { makeWorld } from './testUtils';
 
 test('no warning above 1 HP, at 0 HP, or after the round ends', () => {
@@ -11,4 +11,7 @@ test('on the last heart the edge pulses between 0 and lowHpAlpha with world time
   const w = makeWorld(); w.player.hp = 1; const seen = new Set<number>();
   for (let i = 0; i < 30; i++) { w.time = i / 60; const a = lowHpAlpha(w); expect(a).toBeGreaterThanOrEqual(0); expect(a).toBeLessThanOrEqual(0.5); seen.add(Math.round(a * 100)); }
   expect(seen.size).toBeGreaterThan(5);
+});
+test.each([[0, false], [0.45, true], [0.4, false], [0.3, true], [0.01, true]])('readyGlyphVisible with slowMo %f = %s', (s, out) => {
+  const w = makeWorld(); w.fx.slowMo = s; expect(readyGlyphVisible(w)).toBe(out);
 });

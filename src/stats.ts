@@ -52,13 +52,20 @@ export function defaultStatInput(cfg: Stats): StatInput {
   };
 }
 
-/** Beam multiplier: rises steeply for small Flat Attack, then flattens and stops at the cap. */
-export function ampFor(flatAttack: number, amp: Stats['amp']): number {
-  return Math.min(amp.max, amp.min + amp.k * Math.log(1 + flatAttack / amp.scale));
+export interface LogCurve { min: number; max: number; k: number; scale: number }
+
+/** Rises steeply for small x, then flattens and stops at max. */
+export function logCurve(x: number, c: LogCurve): number {
+  return Math.min(c.max, c.min + c.k * Math.log(1 + x / c.scale));
 }
 
+export const atkFor = (flatAttack: number, atk: Stats['atk']): number => logCurve(flatAttack, atk);
+
+/** Beam multiplier. */
+export const ampFor = (flatAttack: number, amp: Stats['amp']): number => logCurve(flatAttack, amp);
+
 export function deriveStats(input: StatInput, cfg: Stats): DerivedStats {
-  const atk = cfg.baseAtk + input.flatAttack;
+  const atk = atkFor(input.flatAttack, cfg.atk);
   const amp = ampFor(input.flatAttack, cfg.amp);
   return {
     atk,

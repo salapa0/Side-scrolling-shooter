@@ -28,8 +28,8 @@ test('rapid wears off, and a second pickup resets it to 6 s instead of stacking'
   w.player.rapid = 2; applyPowerUp(w, 'rapid'); expect(w.player.rapid).toBe(6);
 });
 test('health adds a heart up to max', () => {
-  const w = makeWorld(); w.player.hp = 2; applyPowerUp(w, 'health'); expect(w.player.hp).toBe(3);
-  applyPowerUp(w, 'health'); expect(w.player.hp).toBe(3);
+  const w = makeWorld(); const max = w.cfg.player.hp; w.player.hp = max - 1; applyPowerUp(w, 'health'); expect(w.player.hp).toBe(max);
+  applyPowerUp(w, 'health'); expect(w.player.hp).toBe(max);
 });
 test('charge readies E and fires specialReady, and does nothing when E is ready', () => {
   const w = makeWorld(); w.player.specialCd = 5; applyPowerUp(w, 'charge');

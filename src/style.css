@@ -249,7 +249,11 @@ body {
   background: var(--ui-win);
 }
 
+/* Out of the flex row, under the special bar, so it never squeezes the boss bar. */
 #hud-rapid {
+  position: absolute;
+  top: 1.75em;
+  right: 0.75em;
   color: var(--ui-win);
 }
 

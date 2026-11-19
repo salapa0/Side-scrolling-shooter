@@ -30,6 +30,11 @@ export function run(
   for (let i = 0; i < steps; i++) fn(w, input, 1 / 60);
 }
 
+/** Final stage, 0 HP, not refilling: the state bossDefeated() reports as a kill. */
+export function defeatBoss(w: World): void {
+  w.boss.phase = w.cfg.boss.phases.length as 1 | 2 | 3; w.boss.hp = 0; w.boss.charge = 0;
+}
+
 /** Player bullet at (x, y), stationary, with the configured size and shot damage. */
 export function shoot(w: World, x: number, y: number): Bullet {
   const b = w.playerBullets.acquire()!;

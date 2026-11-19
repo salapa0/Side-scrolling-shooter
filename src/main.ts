@@ -10,7 +10,7 @@ import { toResult } from './game/round';
 import { stepWorld } from './game/step';
 import { createWorld, type World } from './game/world';
 import { defaultStatInput, deriveStats, type StatInput } from './stats';
-import { createTally, type TallyStorage } from './tally';
+import { createTally, type TallyKey, type TallyStorage } from './tally';
 import { createConfirm } from './ui/confirm';
 import { createDevConsole } from './ui/devConsole';
 import { createHud } from './ui/hud';
@@ -37,10 +37,12 @@ function openStorage(): TallyStorage | null {
 // ?stress: sustained phase 3 for frame-rate checks. Zero damage keeps the boss there; drones leave
 // the screen, so it settles near 25-35 drones and ~240 quads, not the pool caps.
 const STRESS = new URLSearchParams(window.location.search).has('stress');
-const STRESS_BOSS_HP = 0.24;
+// Rounds count together only under the same total boss HP and balance rules.
+const TALLY_KEY: TallyKey = { bossMaxHp: CONFIG.boss.stageHp * CONFIG.boss.phases.length, balanceVersion: CONFIG.balanceVersion };
 
 function applyStress(w: World): void {
-  w.boss.hp = w.boss.maxHp * STRESS_BOSS_HP;
+  w.boss.phase = 3;
+  w.boss.hp = w.boss.maxHp;
   w.player.invuln = Infinity;
   w.stats.shotDamage = 0;
   w.stats.specialDamage = 0;
@@ -108,7 +110,7 @@ function start(): void {
       hud.setVisible(false);
       const result = toResult(world, lastInput);
       // Stress rounds can't be won, so they'd only skew the win rate.
-      if (!STRESS) tally.record({ ...result, bossMaxHp: CONFIG.boss.maxHp });
+      if (!STRESS) tally.record({ ...result, ...TALLY_KEY });
       screens.showResults(result);
     }
   };
@@ -143,7 +145,7 @@ function start(): void {
     steps = 0;
     if (input.consume('debug')) devConsole.toggle();
     // Consumed every frame so a press made while the console is hidden can't clear the log later.
-    if (input.consume('resetTally') && devConsole.visible && confirmClear.press(performance.now())) tally.clear(CONFIG.boss.maxHp);
+    if (input.consume('resetTally') && devConsole.visible && confirmClear.press(performance.now())) tally.clear(TALLY_KEY);
     if (state === 'playing') {
       if (input.consume('pause')) pause();
       else play(frameDt);
@@ -158,7 +160,7 @@ function start(): void {
     frameStats.record(frameDt * 1000);
     devConsole.update(() => ({
       appState: state, world, input: lastInput, frame: frameStats, steps, quads: renderer.quadCount,
-      tally: tally.summary(CONFIG.boss.maxHp), clearArmed: confirmClear.armed(performance.now()),
+      tally: tally.summary(TALLY_KEY), clearArmed: confirmClear.armed(performance.now()),
     }));
   };
   // An exception would silently end the rAF chain and freeze the screen, so surface it.

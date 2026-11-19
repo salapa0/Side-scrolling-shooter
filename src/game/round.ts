@@ -1,4 +1,5 @@
 import type { StatInput } from '../stats';
+import { bossDefeated } from './enemies';
 import type { World } from './world';
 
 /** Plain data only, so it can be stored or sent to a leaderboard later (spec §5.4). */
@@ -19,7 +20,7 @@ export function updateRound(w: World, dt: number): void {
   }
   w.timeLeft = Math.max(0, w.timeLeft - dt);
   // A boss kill on the final tick still counts as a win (spec §5.3).
-  if (w.boss.hp <= 0) endRound(w, 'won', 'boss');
+  if (bossDefeated(w.boss, w.cfg.boss.phases.length)) endRound(w, 'won', 'boss');
   else if (w.player.hp <= 0) endRound(w, 'lost', 'hp');
   else if (w.timeLeft === 0) endRound(w, 'lost', 'time');
 }

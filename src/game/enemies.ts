@@ -1,13 +1,31 @@
-import type { World } from './world';
+import type { Boss, World } from './world';
 
 // Off-screen culling distance for drones, not a gameplay value.
 const DRONE_MARGIN = 16;
 const TAU = Math.PI * 2;
 
-export function phaseFor(hpFrac: number, thresholds: readonly number[]): 1 | 2 | 3 {
-  if (hpFrac < thresholds[1]) return 3;
-  if (hpFrac <= thresholds[0]) return 2;
-  return 1;
+/** The fight is won only when the final stage's bar is empty and no refill is under way. */
+export function bossDefeated(b: Boss, stages: number): boolean {
+  return b.phase === stages && b.hp <= 0 && b.charge <= 0;
+}
+
+/**
+ * Damages the current stage. An emptied stage hands over to the next one, whose bar refills over
+ * chargeTime; leftover damage is lost. Returns false (nothing changes) while refilling or once defeated.
+ */
+export function damageBoss(w: World, amount: number, x = w.boss.x, y = w.boss.y): boolean {
+  const b = w.boss;
+  const stages = w.cfg.boss.phases.length;
+  if (b.charge > 0 || bossDefeated(b, stages)) return false;
+  b.hp = Math.max(0, b.hp - amount);
+  w.events.push({ type: 'bossHit', x, y });
+  if (b.hp === 0 && b.phase < stages) {
+    b.phase = (b.phase + 1) as 2 | 3;
+    b.charge = w.cfg.boss.chargeTime;
+    if (b.charge <= 0) b.hp = b.maxHp; // chargeTime 0 = no pause, but the new stage must still start full
+    w.events.push({ type: 'phaseChanged', phase: b.phase, x: b.x, y: b.y });
+  }
+  return true;
 }
 
 export function fireBullet(w: World, x: number, y: number, angle: number, speed: number): void {
@@ -36,20 +54,21 @@ function spawnDroneWave(w: World, count: number): void {
 export function updateBoss(w: World, dt: number): void {
   const b = w.boss;
   b.flash = Math.max(0, b.flash - dt);
-  if (w.status !== 'playing' || b.hp <= 0) return;
   const cfg = w.cfg.boss;
-
-  const phase = Math.max(b.phase, phaseFor(b.hp / b.maxHp, cfg.phaseThresholds)) as 1 | 2 | 3;
-  if (phase !== b.phase) {
-    b.phase = phase;
-    if (phase !== 1) w.events.push({ type: 'phaseChanged', phase, x: b.x, y: b.y });
-  }
+  if (w.status !== 'playing' || bossDefeated(b, cfg.phases.length)) return;
   const p = cfg.phases[b.phase - 1];
 
   b.age += dt;
   const step = cfg.moveSpeed * dt;
   b.x += Math.max(-step, Math.min(step, p.x - b.x));
   b.y = cfg.centerY + Math.sin(b.age * p.bobSpeed * TAU) * p.bobAmp;
+
+  // The new stage's bar fills up; no new attacks until it is full (a short breather).
+  if (b.charge > 0) {
+    b.charge = Math.max(0, b.charge - dt);
+    b.hp = b.maxHp * (1 - b.charge / cfg.chargeTime);
+    return;
+  }
 
   // Interval <= 0 turns a pattern off (like spread and spiral) instead of looping forever.
   if (p.droneInterval > 0) {

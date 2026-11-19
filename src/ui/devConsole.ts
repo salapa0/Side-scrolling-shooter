@@ -1,5 +1,6 @@
 import type { FrameStats } from '../engine/frameStats';
 import type { Pool } from '../engine/pool';
+import { closeBonus } from '../game/bonus';
 import type { World } from '../game/world';
 import type { StatInput } from '../stats';
 import type { TallySummary } from '../tally';
@@ -40,13 +41,14 @@ export function devConsoleText(s: DevSnapshot): string {
     `ROUND ${s.appState} · status ${w.status} · time ${w.timeLeft.toFixed(1)} / ${st.playTime} s · scale ${w.fx.timeScale.toFixed(2)} · kills ${w.kills}`,
     `PLAYER HP ${p.hp}/${cfg.player.hp} · pos ${Math.round(p.x)},${Math.round(p.y)} · invuln ${p.invuln.toFixed(2)}`
       + ` · special ${p.specialCd.toFixed(1)}/${st.specialCooldown.toFixed(1)} s · fire ${fireRate}/s · rapid ${p.rapid.toFixed(1)} s`
-      + ` · hitbox ${cfg.player.hitW}×${cfg.player.hitH}`,
+      + ` · hitbox ${cfg.player.hitW}×${cfg.player.hitH} · close ×${closeBonus(w).toFixed(2)}`,
     `STATS flat ${s.input.flatAttack} · CDR ${s.input.cdReduction}% · play ${s.input.playTime} s`
       + ` · ATK ${st.atk} · shot ${st.shotDamage} · AMP ${st.amp.toFixed(2)} · beam ${Math.round(st.specialDamage)}`,
-    `BOSS HP ${Math.round(b.hp)}/${b.maxHp} (${((b.hp / b.maxHp) * 100).toFixed(1)}%) · phase ${b.phase} · pos ${Math.round(b.x)},${Math.round(b.y)}`,
+    `BOSS stage ${b.phase}/${cfg.boss.phases.length} · HP ${Math.round(b.hp)}/${b.maxHp} (${((b.hp / b.maxHp) * 100).toFixed(1)}%)`
+      + ` · charge ${b.charge.toFixed(1)} s · pos ${Math.round(b.x)},${Math.round(b.y)}`,
     `POOLS ${used('drones', w.drones)} · ${used('bullets', w.playerBullets)} · ${used('enemy', w.enemyBullets)}`
       + ` · ${used('particles', w.particles)} · ${used('power-ups', w.powerUps)}`,
-    `TALLY @${t.bossMaxHp} rounds ${t.rounds} · wins ${t.wins} · lost time ${t.lostTime} · lost HP ${t.lostHp} · win rate ${winRate} · ${bands}${armed}`,
+    `TALLY v${t.balanceVersion} @${t.bossMaxHp} rounds ${t.rounds} · wins ${t.wins} · lost time ${t.lostTime} · lost HP ${t.lostHp} · win rate ${winRate} · ${bands}${armed}`,
   ].join('\n');
 }
 

@@ -1,19 +1,21 @@
 import type { RoundResult } from './game/round';
 
 /** One finished round, plus the boss HP it was played under (the tuning dial). */
-export interface TallyRecord extends RoundResult { bossMaxHp: number }
+export interface TallyRecord extends RoundResult { bossMaxHp: number; balanceVersion: number }
+/** Which rounds count together: same total boss HP and same balance rules. */
+export interface TallyKey { bossMaxHp: number; balanceVersion: number }
 export interface TallyBand { label: string; wins: number; rounds: number }
 export interface TallySummary {
-  bossMaxHp: number; rounds: number; wins: number; lostTime: number; lostHp: number;
+  bossMaxHp: number; balanceVersion: number; rounds: number; wins: number; lostTime: number; lostHp: number;
   winRate: number | null; bands: TallyBand[];
 }
 export type TallyStorage = Pick<Storage, 'getItem' | 'setItem'>;
 
 export interface Tally {
   record(rec: TallyRecord): void;
-  /** Drops the rounds at this boss HP only: the ones the console shows. Older tuning data stays. */
-  clear(bossMaxHp: number): void;
-  summary(bossMaxHp: number): TallySummary;
+  /** Drops only the rounds under this key: the ones the console shows. Older tuning data stays. */
+  clear(key: TallyKey): void;
+  summary(key: TallyKey): TallySummary;
 }
 
 const OUTCOMES = new Set(['win', 'fail']);
@@ -25,6 +27,7 @@ function isRecord(v: unknown): v is TallyRecord {
   const stats = r.stats as Record<string, unknown> | null | undefined;
   return OUTCOMES.has(r.outcome as string) && REASONS.has(r.reason as string)
     && typeof r.bossMaxHp === 'number'
+    && (r.balanceVersion === undefined || typeof r.balanceVersion === 'number')
     && typeof stats === 'object' && stats !== null && typeof stats.flatAttack === 'number';
 }
 
@@ -37,7 +40,9 @@ export function parseLog(text: string | null): TallyRecord[] {
   } catch {
     return [];
   }
-  return Array.isArray(data) ? data.filter(isRecord) : [];
+  if (!Array.isArray(data)) return [];
+  // Records saved before balanceVersion existed were played under version 1's rules.
+  return data.filter(isRecord).map((r) => (typeof r.balanceVersion === 'number' ? r : { ...r, balanceVersion: 1 }));
 }
 
 export function appendRecord(log: TallyRecord[], rec: TallyRecord, cap: number): TallyRecord[] {
@@ -57,11 +62,14 @@ export function bandLabels(edges: readonly number[]): string[] {
   return labels;
 }
 
-export function summarize(log: readonly TallyRecord[], bossMaxHp: number, edges: readonly number[]): TallySummary {
+const matches = (r: TallyRecord, key: TallyKey): boolean =>
+  r.bossMaxHp === key.bossMaxHp && r.balanceVersion === key.balanceVersion;
+
+export function summarize(log: readonly TallyRecord[], key: TallyKey, edges: readonly number[]): TallySummary {
   const bands = bandLabels(edges).map((label) => ({ label, wins: 0, rounds: 0 }));
   let wins = 0, lostTime = 0, lostHp = 0, rounds = 0;
   for (const r of log) {
-    if (r.bossMaxHp !== bossMaxHp) continue;
+    if (!matches(r, key)) continue;
     rounds++;
     const won = r.outcome === 'win';
     if (won) wins++;
@@ -71,7 +79,7 @@ export function summarize(log: readonly TallyRecord[], bossMaxHp: number, edges:
     band.rounds++;
     if (won) band.wins++;
   }
-  return { bossMaxHp, rounds, wins, lostTime, lostHp, winRate: rounds > 0 ? wins / rounds : null, bands };
+  return { bossMaxHp: key.bossMaxHp, balanceVersion: key.balanceVersion, rounds, wins, lostTime, lostHp, winRate: rounds > 0 ? wins / rounds : null, bands };
 }
 
 /** Storage failures (blocked, full, private mode) leave the in-memory log as the source of truth. */
@@ -91,7 +99,7 @@ export function createTally(storage: TallyStorage | null, key: string, cap: numb
   };
   return {
     record(rec) { log = appendRecord(log, rec, cap); save(); },
-    clear(bossMaxHp) { log = log.filter((r) => r.bossMaxHp !== bossMaxHp); save(); },
-    summary: (bossMaxHp) => summarize(log, bossMaxHp, edges),
+    clear(key) { log = log.filter((r) => !matches(r, key)); save(); },
+    summary: (key) => summarize(log, key, edges),
   };
 }

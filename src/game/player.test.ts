@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest';
 import { fakeInput, makeWorld, run } from './testUtils';
+import { closeBonus } from './bonus';
 import { updatePlayer } from './player';
 import type { World } from './world';
 import type { InputState } from '../engine/input';
@@ -22,7 +23,7 @@ test('area width 0 gives up/down-only movement (spec §7)', () => {
 });
 test('auto-fires 8 shots per second with shot damage', () => {
   const w = makeWorld(); run(w, fakeInput(), 59 / 60, updatePlayerOnly);   // 59 steps: stays clear of the 9th shot at exactly 1.0 s
-  expect(w.playerBullets.count).toBe(8); expect(w.playerBullets.get(0).damage).toBe(w.stats.shotDamage);
+  expect(w.playerBullets.count).toBe(8); expect(w.playerBullets.get(0).damage).toBeCloseTo(w.stats.shotDamage * closeBonus(w));
 });
 test('timers count down and stop at 0', () => {
   const w = makeWorld(); w.player.invuln = 0.5; w.player.specialCd = 0.5;
@@ -40,6 +41,10 @@ test('bullets spawn at the nose', () => {
 test('a full bullet pool skips the shot without throwing', () => {
   const w = makeWorld(); while (w.playerBullets.acquire()) { /* fill */ }
   expect(() => run(w, fakeInput(), 0.5, updatePlayerOnly)).not.toThrow();
+});
+test('shots fired at the front of the area carry ×1.5 damage', () => {
+  const w = makeWorld(); w.player.x = 160; updatePlayer(w, fakeInput(), 1 / 60);
+  expect(w.playerBullets.get(0).damage).toBeCloseTo(w.stats.shotDamage * 1.5);
 });
 test('specialReady fires once when the cooldown runs out', () => {
   const w = makeWorld(); w.player.specialCd = 0.01; updatePlayer(w, fakeInput(), 1 / 60);

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { heartString, pickupLabel, rapidText, specialFraction } from './hud';
+import { heartString, pickupLabel, rapidText, specialFraction, stageLabel } from './hud';
 
 test.each([[3, 3, '♥♥♥'], [1, 3, '♥♡♡'], [0, 3, '♡♡♡'], [-1, 2, '♡♡']])('heartString(%i, %i) = %s', (hp, max, out) => {
   expect(heartString(hp, max)).toBe(out);
@@ -17,3 +17,4 @@ test.each([[null, 0, ''], ['health', 0.5, '+1 HP'], ['clear', 0, 'SCREEN CLEAR']
 test.each([[0, ''], [-1, ''], [6, 'RAPID 6.0'], [4.21, 'RAPID 4.3'], [0.01, 'RAPID 0.1']])('rapidText(%f) = %s', (r, out) => {
   expect(rapidText(r)).toBe(out);
 });
+test('stageLabel', () => { expect(stageLabel(2, 3)).toBe('STAGE 2/3'); });

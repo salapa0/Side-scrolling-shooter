@@ -15,13 +15,15 @@ export const POWER_UP_KINDS: readonly PowerUpKind[] = ['rapid', 'health', 'charg
 export interface PowerUp extends Box { kind: PowerUpKind; age: number; baseY: number }
 export interface Particle { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; size: number; color: Color }
 export interface Player extends Box { hp: number; invuln: number; fireTimer: number; specialCd: number; rapid: number }
-export interface Boss extends Box { hp: number; maxHp: number; phase: 1 | 2 | 3; age: number; droneTimer: number; spreadTimer: number; spiralTimer: number; spiralAngle: number; flash: number }
+// hp and maxHp are the current stage's bar; charge > 0 while the next stage's bar refills (immune).
+export interface Boss extends Box { hp: number; maxHp: number; phase: 1 | 2 | 3; charge: number; age: number; droneTimer: number; spreadTimer: number; spiralTimer: number; spiralAngle: number; flash: number }
 export interface Beam { x: number; y: number; time: number }               // time > 0 while visible
 export type GameEvent =
   | { type: 'droneKilled' | 'bossHit' | 'playerHit' | 'bossKilled' | 'playerKilled'; x: number; y: number }
   | { type: 'phaseChanged'; phase: 2 | 3; x: number; y: number }
   | { type: 'beamFired'; x: number; y: number }
   | { type: 'specialReady'; x: number; y: number }
+  | { type: 'killingShot'; x: number; y: number }
   | { type: 'powerUpCollected'; kind: PowerUpKind; x: number; y: number };
 export interface World {
   cfg: Config; stats: DerivedStats; rng: Rng;
@@ -33,7 +35,8 @@ export interface World {
   lastPickup: { kind: PowerUpKind | null; time: number };           // mutated in place for the HUD label
   grid: SpatialGrid<Drone>; events: GameEvent[];
   // readyFlash and slowMo count down in real time; timeScale is what the current step runs at.
-  fx: { shake: number; hitStop: number; flash: number; readyFlash: number; slowMo: number; timeScale: number };
+  // impact: killing-shot freeze frame, real time.
+  fx: { shake: number; hitStop: number; flash: number; readyFlash: number; slowMo: number; timeScale: number; impact: number };
   stars: Starfield;
 }
 
@@ -63,7 +66,7 @@ export function createWorld(cfg: Config, stats: DerivedStats, rng: Rng): World {
     },
     boss: {
       x: boss.phases[0].x, y: boss.centerY, w: boss.w, h: boss.h,
-      hp: boss.maxHp, maxHp: boss.maxHp, phase: 1, age: 0,
+      hp: boss.stageHp, maxHp: boss.stageHp, phase: 1, charge: 0, age: 0,
       droneTimer: 1, spreadTimer: 0, spiralTimer: 0, spiralAngle: 0, flash: 0,
     },
     beam: { x: 0, y: 0, time: 0 },
@@ -75,7 +78,7 @@ export function createWorld(cfg: Config, stats: DerivedStats, rng: Rng): World {
     lastPickup: { kind: null, time: 0 },
     grid: new SpatialGrid<Drone>(view.width, view.height, GRID_CELL),
     events: [],
-    fx: { shake: 0, hitStop: 0, flash: 0, readyFlash: 0, slowMo: 0, timeScale: 1 },
+    fx: { shake: 0, hitStop: 0, flash: 0, readyFlash: 0, slowMo: 0, timeScale: 1, impact: 0 },
     stars: createStarfield(rng, cfg),
   };
 }

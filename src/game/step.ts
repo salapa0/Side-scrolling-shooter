@@ -11,6 +11,7 @@ import type { World } from './world';
 
 export function stepWorld(w: World, input: InputState, dt: number): void {
   w.events.length = 0;
+  w.fx.impact = Math.max(0, w.fx.impact - dt); // real time, so the freeze frame ends with its hit-stop
   if (w.fx.hitStop > 0) {
     w.fx.hitStop -= dt;
     return;

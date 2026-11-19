@@ -23,6 +23,8 @@ export const pickupLabel = (kind: PowerUpKind | null, since: number, labelTime: 
 export const rapidText = (rapid: number): string =>
   rapid > 0 ? `RAPID ${(Math.ceil(rapid * 10) / 10).toFixed(1)}` : '';
 
+export const stageLabel = (stage: number, total: number): string => `STAGE ${stage}/${total}`;
+
 export interface Hud {
   layout(v: Viewport, dpr: number): void;
   update(w: World): void;
@@ -40,6 +42,7 @@ export function createHud(doc: Document): Hud {
   const timer = need(doc, 'hud-timer');
   const hearts = need(doc, 'hud-hearts');
   const bossFill = need(doc, 'hud-boss-fill');
+  const stage = need(doc, 'hud-stage');
   const kills = need(doc, 'hud-kills');
   const special = need(doc, 'hud-special');
   const specialFill = need(doc, 'hud-special-fill');
@@ -51,6 +54,7 @@ export function createHud(doc: Document): Hud {
   let lastSecond = NaN;
   let lastHp = NaN;
   let lastBoss = -1;
+  let lastStage = -1;
   let lastKills = -1;
   let lastSpecial = -1;
   let lastReady: boolean | null = null;
@@ -74,6 +78,7 @@ export function createHud(doc: Document): Hud {
 
       const boss = Math.max(0, Math.min(1, w.boss.hp / w.boss.maxHp));
       if (boss !== lastBoss) { lastBoss = boss; bossFill.style.width = `${boss * 100}%`; }
+      if (w.boss.phase !== lastStage) { lastStage = w.boss.phase; stage.textContent = stageLabel(w.boss.phase, w.cfg.boss.phases.length); }
 
       if (w.kills !== lastKills) { lastKills = w.kills; kills.textContent = `KILLS ${w.kills}`; }
 

@@ -73,11 +73,16 @@ The start screen also shows a short controls hint (WASD to move, E for special, 
 ### 5.2 The round — one boss fight against the clock
 There is **one enemy: the boss.** It is on screen from the first second. Its drones are the source of chaos and kills.
 
-| Phase | Boss HP | Behavior **[builder's call: thresholds]** |
+Since cycle 2, the boss has **three stages of 2,000 HP each**, one per phase, each with its own bar (`docs/superpowers/specs/2026-11-19-cycle-2-design.md`):
+- When a stage's bar empties, the next bar refills over 1 s. During the refill the boss can't be damaged and doesn't attack.
+- Leftover damage is lost.
+- The fight is won when the stage 3 bar empties.
+
+| Stage | Boss HP | Behavior |
 |---|---|---|
-| 1 | 100%–60% | Boss holds at the right edge, launches waves of drones. |
-| 2 | 60%–25% | Boss advances, fires bullet patterns, keeps launching drones. |
-| 3 | below 25% | Desperate: faster patterns, denser drones — the most overwhelming part. |
+| 1 | 2,000 | Boss holds at the right edge, launches waves of drones. |
+| 2 | 2,000 | Boss advances, fires bullet patterns, keeps launching drones. |
+| 3 | 2,000 | Desperate: faster patterns, denser drones — the most overwhelming part. |
 
 - **Drones** fly toward / across the player's area, fire simple shots, and damage the player on contact. Each destroyed drone adds 1 to the **kill count**.
 - Drones keep spawning until the boss dies or the round ends.
@@ -93,16 +98,17 @@ Shows: Win / Fail, kill count, time remaining (on win), and the stats the player
 
 ### 6.1 Formulas
 ```
-ATK              = BASE_ATK + FlatAttack
-Auto-shot damage = ATK
+ATK              = min(25, 10 + 5 · ln(1 + FlatAttack / 5))   (logarithmic, capped; cycle 2)
+Auto-shot damage = ATK × closeBonus
 AMP              = min(AMP_MAX, AMP_MIN + AMP_K · ln(1 + FlatAttack / AMP_SCALE))
-Special damage   = AMP × ATK           (AMP grows logarithmically with Flat Attack, capped)
+Special damage   = AMP × ATK × closeBonus   (AMP grows logarithmically with Flat Attack, capped)
+closeBonus       = ×1.0 at the back of the movement area, rising linearly to ×1.5 at the front
 Special cooldown = BASE_CD × (1 − CDReduction / 100)
 ```
 
 ### 6.2 Player
 - **Auto-fire:** shoots forward (to the right) continuously at a fixed rate.
-- **HP:** 3 hits **[builder's call]**, with a 1.5 s invulnerability window (avatar flashes) after each hit; enemy fire within 48 px vanishes on a hit. Only an 8×4 hitbox in the middle of the 16×10 ship takes damage (empathy design).
+- **HP:** 5 hits (cycle 2), with a 1.5 s invulnerability window (avatar flashes) after each hit; enemy fire within 48 px vanishes on a hit. Only an 8×4 hitbox in the middle of the 16×10 ship takes damage (empathy design).
 - **Movement:** free movement in four directions inside a rectangular area covering the **left third** of the play field.
 
 ### 6.3 Special skill [E]
@@ -123,7 +129,7 @@ Special cooldown = BASE_CD × (1 − CDReduction / 100)
 Firing is automatic; there is no fire key.
 
 ### 6.5 Starting tuning values (placeholders, all in one config file)
-`BASE_ATK = 10`, AMP curve `AMP_MIN = 20, AMP_MAX = 40, AMP_K = 5, AMP_SCALE = 5` (AMP 20 at Flat Attack 0, capped at 40 from about 268), `BASE_CD = 8 s`, fire rate 8 shots/s, boss HP 6000 (a player with no bonuses wins in about 65% of the default Play Time; tuned toward an 80% player win rate, see `docs/superpowers/specs/2026-11-19-empathy-design.md`). All of these are expected to change.
+ATK curve `10 → 25` (capped from Flat Attack about 95), AMP curve `AMP_MIN = 20, AMP_MAX = 40, AMP_K = 5, AMP_SCALE = 5` (AMP 20 at Flat Attack 0, capped at 40 from about 268), `BASE_CD = 8 s`, fire rate 8 shots/s, boss HP 3 × 2,000 (a player with no bonuses wins in about 65% of the default Play Time; tuned toward an 80% player win rate, see `docs/superpowers/specs/2026-11-19-empathy-design.md`). All of these are expected to change.
 
 ## 7. Built for change
 

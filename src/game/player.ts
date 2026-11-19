@@ -1,5 +1,6 @@
 import { clamp } from '../engine/geom';
 import type { InputState } from '../engine/input';
+import { closeBonus } from './bonus';
 import { fireBeam, readySpecial } from './combat';
 import type { World } from './world';
 
@@ -29,7 +30,7 @@ export function updatePlayer(w: World, input: InputState, dt: number): void {
       b.x = p.x + p.w / 2; b.y = p.y;
       b.vx = cfg.bulletSpeed; b.vy = 0;
       b.w = cfg.bulletW; b.h = cfg.bulletH;
-      b.damage = w.stats.shotDamage;
+      b.damage = w.stats.shotDamage * closeBonus(w);
     }
     p.fireTimer += 1 / fireRate;
   }

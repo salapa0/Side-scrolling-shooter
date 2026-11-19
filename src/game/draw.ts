@@ -1,6 +1,7 @@
 import type { Color } from '../engine/color';
 import type { Renderer } from '../engine/renderer';
 import { drawStarfield } from './background';
+import { bossDefeated } from './enemies';
 import type { World } from './world';
 
 // Overwritten each frame so the fading beam colour never allocates.
@@ -17,14 +18,50 @@ export function lowHpAlpha(w: World): number {
   return max * (0.5 + 0.5 * Math.sin(2 * Math.PI * hz * w.time));
 }
 
+const glyphColor: [number, number, number, number] = [0, 0, 0, 0];
+
+/** The flashing E: on while the ready slow-mo runs, toggling every blinkInterval. */
+export function readyGlyphVisible(w: World): boolean {
+  const s = w.fx.slowMo;
+  return s > 0 && Math.floor(s / w.cfg.fx.readyGlyph.blinkInterval) % 2 === 0;
+}
+
+/** A 5×7-cell pixel E centred on screen: a spine plus top, middle and bottom bars. */
+function drawReadyGlyph(r: Renderer, w: World): void {
+  const { cell, alpha } = w.cfg.fx.readyGlyph;
+  const c: Color = w.cfg.colors.readyFlash;
+  glyphColor[0] = c[0]; glyphColor[1] = c[1]; glyphColor[2] = c[2]; glyphColor[3] = alpha;
+  const x = Math.round(w.cfg.view.width / 2 - 2.5 * cell);
+  const y = Math.round(w.cfg.view.height / 2 - 3.5 * cell);
+  r.rect(x, y, cell, 7 * cell, glyphColor);
+  r.rect(x + cell, y, 4 * cell, cell, glyphColor);
+  r.rect(x + cell, y + 3 * cell, 3 * cell, cell, glyphColor);
+  r.rect(x + cell, y + 6 * cell, 4 * cell, cell, glyphColor);
+}
+
+/** Killing-shot freeze: stark two-tone frame, only the boss, the beam and the ship. */
+function drawImpactFrame(r: Renderer, w: World): void {
+  const { colors, player: pc } = w.cfg;
+  const { boss, beam, player: p } = w;
+  r.begin(colors.impactBg, 0, 0);
+  r.rect(boss.x - boss.w / 2, boss.y - boss.h / 2, boss.w, boss.h, colors.impactInk);
+  r.rect(beam.x, beam.y - pc.beam.height / 2, w.cfg.view.width - beam.x, pc.beam.height, colors.impactInk);
+  r.rect(p.x - p.w / 2, p.y - p.h / 2, p.w, p.h, colors.impactInk);
+  r.end();
+}
+
 export function drawWorld(r: Renderer, w: World): void {
+  if (w.fx.impact > 0) {
+    drawImpactFrame(r, w);
+    return;
+  }
   const { colors } = w.cfg;
   const shake = w.fx.shake;
   r.begin(colors.bg, (Math.random() * 2 - 1) * shake, (Math.random() * 2 - 1) * shake);
   drawStarfield(r, w.stars, w.cfg, w.time);
 
   const boss = w.boss;
-  if (boss.hp > 0) r.rect(boss.x - boss.w / 2, boss.y - boss.h / 2, boss.w, boss.h, boss.flash > 0 ? colors.hitFlash : colors.boss);
+  if (!bossDefeated(boss, w.cfg.boss.phases.length)) r.rect(boss.x - boss.w / 2, boss.y - boss.h / 2, boss.w, boss.h, boss.flash > 0 ? colors.hitFlash : colors.boss);
 
   for (let i = 0; i < w.drones.count; i++) {
     const d = w.drones.get(i);
@@ -75,6 +112,7 @@ export function drawWorld(r: Renderer, w: World): void {
     readyColor[3] = w.cfg.fx.readyFlashAlpha * (w.fx.readyFlash / w.cfg.fx.readyFlashTime);
     r.rect(0, 0, w.cfg.view.width, w.cfg.view.height, readyColor);
   }
+  if (readyGlyphVisible(w)) drawReadyGlyph(r, w);
 
   // Enemy fire after particles so it stays readable over everything else.
   const shots = w.enemyBullets;

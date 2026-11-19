@@ -1,4 +1,6 @@
 import { overlaps, type Box } from '../engine/geom';
+import { closeBonus } from './bonus';
+import { damageBoss } from './enemies';
 import { maybeDropPowerUp } from './powerups';
 import type { Drone, World } from './world';
 
@@ -55,8 +57,7 @@ export function resolveCombat(w: World): void {
       }
       bullets.releaseAt(i);
     } else if (overlaps(b, w.boss)) {
-      w.boss.hp = Math.max(0, w.boss.hp - b.damage);
-      w.events.push({ type: 'bossHit', x: b.x, y: b.y });
+      damageBoss(w, b.damage, b.x, b.y); // used up even while the bar refills
       bullets.releaseAt(i);
     }
   }
@@ -115,8 +116,12 @@ export function fireBeam(w: World): void {
   beamBox.h = cfg.height;
 
   if (overlaps(beamBox, boss)) {
-    boss.hp = Math.max(0, boss.hp - w.stats.specialDamage);
-    w.events.push({ type: 'bossHit', x: boss.x, y: boss.y });
+    const damage = w.stats.specialDamage * closeBonus(w);
+    // Easter egg: a beam that finishes the final stage gets an impact frame. No hint is ever shown.
+    if (boss.phase === w.cfg.boss.phases.length && boss.charge <= 0 && boss.hp > 0 && boss.hp <= damage) {
+      w.events.push({ type: 'killingShot', x: boss.x, y: boss.y });
+    }
+    damageBoss(w, damage);
   }
   for (let i = w.drones.count - 1; i >= 0; i--) {
     if (overlaps(beamBox, w.drones.get(i))) killDrone(w, i, true);
