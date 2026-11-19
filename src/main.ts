@@ -23,7 +23,8 @@ type AppState = 'start' | 'playing' | 'paused' | 'results';
 const newWorld = (input: StatInput): World =>
   createWorld(CONFIG, deriveStats(input, CONFIG.stats), createRng(Date.now() >>> 0));
 
-// ?stress: worst-case round for frame-rate checks. Zero damage keeps the boss in phase 3 so drones pile up to their cap.
+// ?stress: sustained phase 3 for frame-rate checks. Zero damage keeps the boss there; drones leave
+// the screen, so it settles near 25-35 drones and ~240 quads, not the pool caps.
 const STRESS = new URLSearchParams(window.location.search).has('stress');
 const STRESS_BOSS_HP = 0.24;
 
@@ -81,6 +82,7 @@ function start(): void {
   const resume = (): void => {
     state = 'playing';
     screens.showPause(false);
+    input.clear(); // A key pressed while paused (E) must not act on resume.
     acc = 0;
   };
   const play = (frameDt: number): void => {
@@ -116,9 +118,12 @@ function start(): void {
     screens.showStart(lastInput);
   });
   window.addEventListener('blur', pause);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') pause();
+  });
   screens.showStart(lastInput);
 
-  const stop = startLoop((frameDt) => {
+  const frame = (frameDt: number): void => {
     steps = 0;
     if (input.consume('debug')) debug.toggle();
     if (state === 'playing') {
@@ -134,6 +139,16 @@ function start(): void {
     if (state === 'playing' || state === 'paused') hud.update(world);
     frameStats.record(frameDt * 1000);
     debug.update(frameStats, steps, renderer.quadCount);
+  };
+  // An exception would silently end the rAF chain and freeze the screen, so surface it.
+  const stop = startLoop((frameDt) => {
+    try {
+      frame(frameDt);
+    } catch (err) {
+      stop();
+      console.error(err);
+      showFatal(`The game stopped unexpectedly. ${err instanceof Error ? err.message : String(err)}`);
+    }
   });
   renderer.onContextLost(() => {
     stop();
