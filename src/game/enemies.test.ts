@@ -63,3 +63,19 @@ test('drones keep moving and aging but do not fire after the round ends', () => 
   Object.assign(d, { x: 300, y: 142, baseY: 142, hp: 20, age: 0, fireTimer: 0, flash: 0 });
   updateDrones(w, 1 / 60); expect(w.enemyBullets.count).toBe(0); expect(d.x).toBeLessThan(300); expect(d.age).toBeGreaterThan(0);
 });
+test('a dead boss emits no phase change and spawns nothing', () => {
+  const w = makeWorld(); w.boss.hp = 0;
+  updateBoss(w, 1 / 60);
+  expect(w.events).toHaveLength(0); expect(w.drones.count).toBe(0); expect(w.enemyBullets.count).toBe(0);
+});
+test.each([0, -1])('droneInterval %i means no drone waves, and does not hang', (interval) => {
+  const w = makeWorld((c) => { c.boss.phases[0].droneInterval = interval; });
+  updateBoss(w, 1 / 60);
+  expect(w.drones.count).toBe(0);
+});
+test.each([0, -1])('drone fireInterval %i means drones do not fire, and does not hang', (interval) => {
+  const w = makeWorld((c) => { c.drone.fireInterval = interval; });
+  const d = w.drones.acquire()!; Object.assign(d, { x: 300, y: 142, baseY: 142, hp: 20, age: 0, fireTimer: 0 });
+  updateDrones(w, 1 / 60);
+  expect(w.enemyBullets.count).toBe(0);
+});

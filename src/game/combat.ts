@@ -5,9 +5,9 @@ import type { Drone, World } from './world';
 const candidates: Drone[] = [];
 const beamBox: Box = { x: 0, y: 0, w: 0, h: 0 };
 
-function hurtPlayer(w: World): void {
+function hurtPlayer(w: World, damage: number): void {
   const p = w.player;
-  p.hp -= 1;
+  p.hp -= damage;
   p.invuln = w.cfg.player.invulnTime;
   w.events.push({ type: 'playerHit', x: p.x, y: p.y });
   if (p.hp <= 0) w.events.push({ type: 'playerKilled', x: p.x, y: p.y });
@@ -33,7 +33,7 @@ export function resolveCombat(w: World): void {
     w.grid.query(b, candidates);
     let target: Drone | null = null;
     for (let j = 0; j < candidates.length; j++) {
-      if (overlaps(b, candidates[j])) { target = candidates[j]; break; }
+      if (candidates[j].hp > 0 && overlaps(b, candidates[j])) { target = candidates[j]; break; }
     }
     if (target) {
       target.hp -= b.damage;
@@ -56,14 +56,15 @@ export function resolveCombat(w: World): void {
   const shots = w.enemyBullets;
   for (let i = shots.count - 1; i >= 0 && p.invuln <= 0; i--) {
     if (overlaps(shots.get(i), p)) {
+      const damage = shots.get(i).damage;
       shots.releaseAt(i);
-      hurtPlayer(w);
+      hurtPlayer(w, damage);
     }
   }
   for (let i = w.drones.count - 1; i >= 0 && p.invuln <= 0; i--) {
     if (overlaps(w.drones.get(i), p)) {
       w.drones.releaseAt(i);
-      hurtPlayer(w);
+      hurtPlayer(w, 1);
     }
   }
 }

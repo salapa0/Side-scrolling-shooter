@@ -36,7 +36,7 @@ function spawnDroneWave(w: World, count: number): void {
 export function updateBoss(w: World, dt: number): void {
   const b = w.boss;
   b.flash = Math.max(0, b.flash - dt);
-  if (w.status !== 'playing') return;
+  if (w.status !== 'playing' || b.hp <= 0) return;
   const cfg = w.cfg.boss;
 
   const phase = Math.max(b.phase, phaseFor(b.hp / b.maxHp, cfg.phaseThresholds)) as 1 | 2 | 3;
@@ -51,10 +51,13 @@ export function updateBoss(w: World, dt: number): void {
   b.x += Math.max(-step, Math.min(step, p.x - b.x));
   b.y = cfg.centerY + Math.sin(b.age * p.bobSpeed * TAU) * p.bobAmp;
 
-  b.droneTimer -= dt;
-  while (b.droneTimer <= 0) {
-    spawnDroneWave(w, p.droneWave);
-    b.droneTimer += p.droneInterval;
+  // Interval <= 0 turns a pattern off (like spread and spiral) instead of looping forever.
+  if (p.droneInterval > 0) {
+    b.droneTimer -= dt;
+    while (b.droneTimer <= 0) {
+      spawnDroneWave(w, p.droneWave);
+      b.droneTimer += p.droneInterval;
+    }
   }
 
   if (p.spreadInterval > 0) {
@@ -95,6 +98,7 @@ export function updateDrones(w: World, dt: number): void {
       continue;
     }
     if (!playing) continue;
+    if (cfg.fireInterval <= 0) continue;
     d.fireTimer -= dt;
     while (d.fireTimer <= 0) {
       fireBullet(w, d.x, d.y, Math.atan2(w.player.y - d.y, w.player.x - d.x), cfg.bulletSpeed);

@@ -64,3 +64,11 @@ test('beam timer decays and stops at 0, even after the round ends', () => {
   const w = makeWorld(); w.beam.time = 0.01; w.status = 'won'; updatePlayer(w, fakeInput(), 1 / 60);
   expect(w.beam.time).toBe(0);
 });
+test('an enemy bullet costs the player its own damage', () => {
+  const w = makeWorld(); enemyShot(w, w.player.x, w.player.y).damage = 2; resolveCombat(w);
+  expect(w.player.hp).toBe(1);
+});
+test('a second bullet is not eaten by a drone the first one just killed', () => {
+  const w = makeWorld(); drone(w, 200, 100, 10); shoot(w, 200, 100); shoot(w, 200, 100); resolveCombat(w);
+  expect(w.kills).toBe(1); expect(w.playerBullets.count).toBe(1);
+});
