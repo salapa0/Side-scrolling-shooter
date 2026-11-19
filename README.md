@@ -24,7 +24,7 @@ The game needs WebGL2, so keep browser hardware acceleration on.
 ## Checking performance
 
 - **F3** (or the backtick key) toggles the FPS overlay: FPS, average and worst frame time, simulation steps, and quads drawn.
-- Add `?stress` to the URL (for the built file: `file:///.../index.html?stress`) for the worst case. Each round starts with the boss in phase 3, the player invulnerable, and the overlay on. Player damage is zero, so the boss stays in phase 3 and drones pile up to their cap. Stress mode cannot be won; it runs until the timer ends.
+- Add `?stress` to the URL (for the built file: `file:///.../index.html?stress`) for the worst case. Each round starts with the boss in phase 3, the player invulnerable, and the overlay on. Player damage is zero, so the boss stays in phase 3. This measures sustained phase 3 as currently tuned, the busiest the real game gets (about 25-35 drones and ~240 quads on screen), not the pool caps. Stress mode cannot be won; it runs until the timer ends.
 
 ## Backup: GitHub Pages
 

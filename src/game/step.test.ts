@@ -9,6 +9,8 @@ test('hit-stop freezes the whole simulation, timer included', () => {
 });
 test('events are handled once', () => {
   const w = makeWorld(); w.player.invuln = 99; drone(w, 200, 100, 1); shoot(w, 200, 100);
-  stepWorld(w, fakeInput(), 1 / 60); const n = w.particles.count; stepWorld(w, fakeInput(), 1 / 60);
+  stepWorld(w, fakeInput(), 1 / 60); const n = w.particles.count;
+  expect(n).toBe(12); // fx.droneBurst: proves the first step emitted the burst
+  stepWorld(w, fakeInput(), 1 / 60);
   expect(w.particles.count).toBeLessThanOrEqual(n);
 });
