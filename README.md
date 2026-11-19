@@ -28,7 +28,7 @@ The game needs WebGL2, so keep browser hardware acceleration on.
 
 ## Backup: GitHub Pages
 
-If the booth PC cannot run the file, publish the contents of the built `dist/` folder (just `index.html`) to GitHub Pages and open that URL instead.
+Every push to `main` runs the tests, builds the game, and publishes it to <https://salapa0.github.io/Side-scrolling-shooter/> (see `.github/workflows/pages.yml`). If the booth PC cannot run the file, or has no Node.js to build it, open that URL instead. `?stress` works there too.
 
 ## License
 
